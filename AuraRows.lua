@@ -104,6 +104,19 @@ end
 
 local function ScheduleLayout()
     if layoutTimer then layoutTimer:Cancel() end
+
+    -- Clear cached positions so SetPoint/SetSize hooks don't enforce
+    -- stale values while Blizzard repositions frames during the transition.
+    -- ApplyLayout() will set fresh values next frame.
+    if viewer then
+        viewer._arTargetW = nil
+        viewer._arTargetH = nil
+    end
+    for frame in pairs(hookedFrames) do
+        frame._arTargetX = nil
+        frame._arTargetY = nil
+    end
+
     layoutTimer = C_Timer.NewTimer(0, function()
         layoutTimer = nil
         ApplyLayout()
