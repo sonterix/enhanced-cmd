@@ -90,7 +90,11 @@ local function ApplyLayout()
     local totalW = numCols * (iconW + spacing) - spacing
     local totalH = numRows * (iconH + spacing) - spacing
     if totalW > 0 and totalH > 0 then
+        viewer._arTargetW = totalW
+        viewer._arTargetH = totalH
+        viewer._arSettingSize = true
         viewer:SetSize(totalW, totalH)
+        viewer._arSettingSize = false
     end
 end
 
@@ -181,6 +185,15 @@ local function InstallHooks()
             ADDON_NAME
         )
     end
+
+    -- Prevent Blizzard from overriding our grid size on the viewer
+    hooksecurefunc(viewer, "SetSize", function(self)
+        if self._arSettingSize then return end
+        if not self._arTargetW then return end
+        self._arSettingSize = true
+        self:SetSize(self._arTargetW, self._arTargetH)
+        self._arSettingSize = false
+    end)
 
     local children = { viewer:GetChildren() }
     for _, child in ipairs(children) do
