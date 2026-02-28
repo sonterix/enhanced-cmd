@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.2.0] - 2026-02-27
+
+### Added
+- **Align setting** — Left, Center, or Right alignment for incomplete last rows
+- `/ar align <left|center|right>` slash command
+- Align dropdown in Edit Mode panel
+
+### Changed
+- Slider value text now uses `GameFontHighlightSmall` (smaller, yellow/gold — matches Tracked Buffs style)
+- Growth and Align dropdowns dynamically match slider width
+- "Growth Direction" label shortened to "Growth"
+- Panel height increased for proper bottom padding
+
+### Technical
+- `DIRECTION_DISPLAY` and `ALIGN_DISPLAY` tables moved before slash commands for correct upvalue capture
+- Alignment offset computed per-row in `ApplyLayout()`, baked into `_arTargetX`
+- Dropdown widths set dynamically in `ShowAuraRowsPanel()` based on actual panel width
+
 ## [1.1.0] - 2026-02-27
 
 ### Changed

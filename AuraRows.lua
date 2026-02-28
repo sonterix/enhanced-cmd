@@ -7,6 +7,7 @@ local db
 local DEFAULTS = {
     maxPerRow     = 8,
     growDirection = "DOWN",
+    align         = "LEFT",
 }
 
 local viewer
@@ -40,6 +41,7 @@ local function ApplyLayout()
 
     local maxPerRow = db.maxPerRow
     local growDown = (db.growDirection == "DOWN")
+    local align = db.align or "LEFT"
 
     local iconW = visible[1]:GetWidth()
     local iconH = visible[1]:GetHeight()
@@ -50,13 +52,27 @@ local function ApplyLayout()
     local totalIcons = #visible
     local numCols = math.min(maxPerRow, totalIcons)
     local numRows = math.ceil(totalIcons / maxPerRow)
+    local fullRowWidth = numCols * (iconW + spacing) - spacing
 
     for i, frame in ipairs(visible) do
         local idx = i - 1
         local col = idx % maxPerRow
         local row = math.floor(idx / maxPerRow)
 
-        local x = col * (iconW + spacing)
+        -- Alignment offset for incomplete rows
+        local alignOffset = 0
+        if align ~= "LEFT" then
+            local rowStart = row * maxPerRow
+            local iconsOnRow = math.min(maxPerRow, totalIcons - rowStart)
+            local rowWidth = iconsOnRow * (iconW + spacing) - spacing
+            if align == "CENTER" then
+                alignOffset = (fullRowWidth - rowWidth) / 2
+            elseif align == "RIGHT" then
+                alignOffset = fullRowWidth - rowWidth
+            end
+        end
+
+        local x = alignOffset + col * (iconW + spacing)
         local y = row * (iconH + spacing)
 
         frame._arTargetX = x
@@ -208,6 +224,13 @@ local function TryInit()
 end
 
 -- ---------------------------------------------------------------------------
+-- Display text for direction and alignment values (capitalized for UI)
+-- ---------------------------------------------------------------------------
+
+local DIRECTION_DISPLAY = { DOWN = "Down", UP = "Up" }
+local ALIGN_DISPLAY = { LEFT = "Left", CENTER = "Center", RIGHT = "Right" }
+
+-- ---------------------------------------------------------------------------
 -- Slash commands
 -- ---------------------------------------------------------------------------
 
@@ -233,18 +256,30 @@ local function RegisterSlashCommands()
             local dir = arg:upper()
             if dir == "UP" or dir == "DOWN" then
                 db.growDirection = dir
-                print("|cff00ccffAuraRows:|r Growth direction set to " .. (dir == "DOWN" and "Down" or "Up"))
+                print("|cff00ccffAuraRows:|r Growth set to " .. DIRECTION_DISPLAY[dir])
                 ApplyLayout()
             else
                 print("|cff00ccffAuraRows:|r Usage: /ar grow <up|down>")
             end
 
+        elseif cmd == "align" then
+            local a = arg:upper()
+            if a == "LEFT" or a == "CENTER" or a == "RIGHT" then
+                db.align = a
+                print("|cff00ccffAuraRows:|r Alignment set to " .. ALIGN_DISPLAY[a])
+                ApplyLayout()
+            else
+                print("|cff00ccffAuraRows:|r Usage: /ar align <left|center|right>")
+            end
+
         else
-            print("|cff00ccffAuraRows|r v1.0.0")
-            local dirDisplay = db.growDirection == "DOWN" and "Down" or "Up"
-            print("  Current: " .. db.maxPerRow .. " per row, grow " .. dirDisplay)
-            print("  /ar rows <1-40>      - Icons per row")
-            print("  /ar grow <up|down>   - Row growth direction")
+            print("|cff00ccffAuraRows|r v1.2.0")
+            local dirDisplay = DIRECTION_DISPLAY[db.growDirection]
+            local alignDisplay = ALIGN_DISPLAY[db.align or "LEFT"]
+            print("  Current: " .. db.maxPerRow .. " per row, grow " .. dirDisplay .. ", align " .. alignDisplay)
+            print("  /ar rows <1-40>              - Icons per row")
+            print("  /ar grow <up|down>           - Row growth direction")
+            print("  /ar align <left|center|right> - Row alignment")
         end
     end
 end
@@ -254,9 +289,6 @@ end
 -- ---------------------------------------------------------------------------
 
 local editModePanel
-
--- Display text for direction values (capitalized for UI)
-local DIRECTION_DISPLAY = { DOWN = "Down", UP = "Up" }
 
 local function CreateEditModePanel()
     if editModePanel then return end
@@ -293,7 +325,7 @@ local function CreateEditModePanel()
     perRowLabel:SetJustifyH("LEFT")
     perRowLabel:SetText("Per Row")
 
-    local perRowValue = row1:CreateFontString(nil, "OVERLAY", "GameFontHighlightMedium")
+    local perRowValue = row1:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     perRowValue:SetPoint("RIGHT", 0, 0)
     perRowValue:SetJustifyH("RIGHT")
     perRowValue:SetText(tostring(db.maxPerRow))
@@ -327,11 +359,11 @@ local function CreateEditModePanel()
     growLabel:SetPoint("LEFT", 0, 0)
     growLabel:SetWidth(LABEL_WIDTH)
     growLabel:SetJustifyH("LEFT")
-    growLabel:SetText("Growth Direction")
+    growLabel:SetText("Growth")
 
     local dropdown = CreateFrame("Frame", "AuraRowsGrowDropdown", row2, "UIDropDownMenuTemplate")
-    dropdown:SetPoint("LEFT", growLabel, "RIGHT", -12, -2)
-    UIDropDownMenu_SetWidth(dropdown, 140)
+    dropdown:SetPoint("LEFT", growLabel, "RIGHT", -15, -2)
+    dropdown:SetPoint("RIGHT", row2, "RIGHT", 0, 0)
     UIDropDownMenu_Initialize(dropdown, function(self, level)
         local info = UIDropDownMenu_CreateInfo()
         for _, dir in ipairs({"DOWN", "UP"}) do
@@ -349,12 +381,45 @@ local function CreateEditModePanel()
     end)
     UIDropDownMenu_SetText(dropdown, DIRECTION_DISPLAY[db.growDirection])
 
+    -- Row 3: Align — [label] [dropdown]
+    local row3 = CreateFrame("Frame", nil, f)
+    row3:SetHeight(ROW_HEIGHT)
+    row3:SetPoint("TOPLEFT", row2, "BOTTOMLEFT", 0, 0)
+    row3:SetPoint("TOPRIGHT", row2, "BOTTOMRIGHT", 0, 0)
+
+    local alignLabel = row3:CreateFontString(nil, "OVERLAY", "GameFontHighlightMedium")
+    alignLabel:SetPoint("LEFT", 0, 0)
+    alignLabel:SetWidth(LABEL_WIDTH)
+    alignLabel:SetJustifyH("LEFT")
+    alignLabel:SetText("Align")
+
+    local alignDropdown = CreateFrame("Frame", "AuraRowsAlignDropdown", row3, "UIDropDownMenuTemplate")
+    alignDropdown:SetPoint("LEFT", alignLabel, "RIGHT", -15, -2)
+    alignDropdown:SetPoint("RIGHT", row3, "RIGHT", 0, 0)
+    UIDropDownMenu_Initialize(alignDropdown, function(self, level)
+        local info = UIDropDownMenu_CreateInfo()
+        for _, a in ipairs({"LEFT", "CENTER", "RIGHT"}) do
+            info.text = ALIGN_DISPLAY[a]
+            info.value = a
+            info.checked = (db.align == a)
+            info.func = function(btn)
+                db.align = btn.value
+                UIDropDownMenu_SetText(alignDropdown, ALIGN_DISPLAY[btn.value])
+                CloseDropDownMenus()
+                ApplyLayout()
+            end
+            UIDropDownMenu_AddButton(info)
+        end
+    end)
+    UIDropDownMenu_SetText(alignDropdown, ALIGN_DISPLAY[db.align])
+
     f.growDropdown = dropdown
+    f.alignDropdown = alignDropdown
     f.perRowValue = perRowValue
     editModePanel = f
 
     -- Set a default size — will be overridden by ShowAuraRowsPanel
-    f:SetSize(480, 110)
+    f:SetSize(480, 160)
 end
 
 local function RefreshEditModePanel()
@@ -368,6 +433,9 @@ local function RefreshEditModePanel()
     end
     if editModePanel.growDropdown then
         UIDropDownMenu_SetText(editModePanel.growDropdown, DIRECTION_DISPLAY[db.growDirection])
+    end
+    if editModePanel.alignDropdown then
+        UIDropDownMenu_SetText(editModePanel.alignDropdown, ALIGN_DISPLAY[db.align or "LEFT"])
     end
 end
 
@@ -388,6 +456,19 @@ local function ShowAuraRowsPanel()
         editModePanel:ClearAllPoints()
         editModePanel:SetPoint("TOP", UIParent, "TOP", 0, -100)
     end
+
+    -- Set dropdown widths to match slider area
+    local panelW = editModePanel:GetWidth()
+    local dropdownWidth = panelW - 120 - 15 * 2 - 25  -- LABEL_WIDTH - CONTENT_LEFT*2 - padding
+    if dropdownWidth > 80 then
+        if editModePanel.growDropdown then
+            UIDropDownMenu_SetWidth(editModePanel.growDropdown, dropdownWidth)
+        end
+        if editModePanel.alignDropdown then
+            UIDropDownMenu_SetWidth(editModePanel.alignDropdown, dropdownWidth)
+        end
+    end
+
     editModePanel:Show()
 end
 

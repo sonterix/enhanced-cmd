@@ -9,6 +9,7 @@ Blizzard's Cooldown Manager displays tracked buffs/debuffs via `BuffIconCooldown
 - **Multiple rows** for the aura tracker (Tracked Buffs) instead of one long horizontal line
 - **Configurable icons per row** (1–40)
 - **Growth direction** — rows grow downward or upward from the anchor point
+- **Row alignment** — Left, Center, or Right alignment for incomplete last rows
 - **Edit Mode integration** — settings panel appears when "Tracked Buffs" is selected in Edit Mode, anchored to Blizzard's settings dialog
 - **Slash commands** — `/ar` or `/aurarows` for quick configuration from chat
 - **Combat safe** — defers layout changes during combat, applies them when combat ends
@@ -31,13 +32,14 @@ World of Warcraft/_retail_/Interface/AddOns/AuraRows/
 | `/ar` | Show current settings |
 | `/ar rows <1-40>` | Set the number of icons per row |
 | `/ar grow <UP\|DOWN>` | Set which direction new rows grow |
+| `/ar align <LEFT\|CENTER\|RIGHT>` | Set alignment for incomplete rows |
 
 ### Edit Mode
 
 1. Open Edit Mode (Escape > Edit Mode)
 2. Click on the **Tracked Buffs** frame
 3. The AuraRows settings panel appears below Blizzard's settings dialog
-4. Adjust the **Per Row** slider and **Growth Direction** dropdown
+4. Adjust the **Per Row** slider, **Growth** dropdown, and **Align** dropdown
 5. Changes apply live
 
 ## Saved Variables
@@ -48,6 +50,7 @@ Settings are stored in `AuraRowsDB` and persist across sessions:
 |---|---|---|---|
 | `maxPerRow` | number | `8` | Maximum icons before wrapping to a new row |
 | `growDirection` | string | `"DOWN"` | `"DOWN"` = rows grow downward, `"UP"` = rows grow upward |
+| `align` | string | `"LEFT"` | `"LEFT"`, `"CENTER"`, or `"RIGHT"` — alignment for incomplete last rows |
 
 ---
 
@@ -143,7 +146,7 @@ The addon hooks `EditModeManagerFrame:SelectSystem(systemFrame)` to detect when 
 ```
 AuraRows/
   AuraRows.toc       -- Addon metadata, Interface version, SavedVariables
-  AuraRows.lua        -- Entire addon implementation (~420 lines)
+  AuraRows.lua        -- Entire addon implementation (~540 lines)
   docs/
     README.md         -- This file
     CHANGELOG.md      -- Version history
