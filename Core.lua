@@ -50,16 +50,12 @@ local function ApplyLayout()
     local iconH = visibleBuf[1]:GetHeight() * scale
     if iconW < 1 then iconW = 36 end
     if iconH < 1 then iconH = 36 end
-    -- Read Blizzard's IconPadding so the CDM slider works; fall back to default
-    local spacing = ns.ICON_SPACING
-    if viewer.GetSettingValue
-        and Enum.EditModeCooldownViewerSetting
-        and Enum.EditModeCooldownViewerSetting.IconPadding then
-        local ok, val = pcall(viewer.GetSettingValue, viewer,
-            Enum.EditModeCooldownViewerSetting.IconPadding)
-        if ok and type(val) == "number" then
-            spacing = val
-        end
+
+    local spacing = 0
+    if viewer.iconPadding ~= nil then
+        local offset = viewer.GetAdditionalPaddingOffset
+            and viewer:GetAdditionalPaddingOffset() or -4
+        spacing = viewer.iconPadding + offset
     end
 
     local totalIcons = n
@@ -104,17 +100,9 @@ local function ApplyLayout()
     local totalW = numCols * (iconW + spacing) - spacing
     local totalH = numRows * (iconH + spacing) - spacing
     if totalW > 0 and totalH > 0 then
-        viewer._arTargetW = totalW
-        viewer._arTargetH = totalH
-        viewer._arSettingSize = true
         viewer:SetSize(totalW, totalH)
-        viewer._arSettingSize = false
     end
 end
-
--- Expose for EditMode and slash commands
-ns.ApplyLayout = ApplyLayout
-ns.ScheduleLayout = ScheduleLayout
 
 -- ---------------------------------------------------------------------------
 -- Debounced scheduling
@@ -123,19 +111,13 @@ ns.ScheduleLayout = ScheduleLayout
 local function ScheduleLayout()
     if layoutTimer then layoutTimer:Cancel() end
 
-    -- Clear cached positions so SetPoint/SetSize hooks don't enforce
-    -- stale values while Blizzard repositions frames during the transition.
-    -- ApplyLayout() will set fresh values next frame.
-    if viewer then
-        viewer._arTargetW = nil
-        viewer._arTargetH = nil
-    end
+    -- Clean up frames that are no longer children of the viewer.
+    -- Do NOT clear _arTargetX/Y — let hooks keep enforcing the last known
+    -- good positions during transitions (e.g. Edit Mode exit).
+    -- ApplyLayout() will overwrite with fresh values next frame.
     for frame in pairs(hookedFrames) do
         if frame:GetParent() ~= viewer then
             hookedFrames[frame] = nil
-        else
-            frame._arTargetX = nil
-            frame._arTargetY = nil
         end
     end
 
@@ -144,6 +126,10 @@ local function ScheduleLayout()
         ApplyLayout()
     end)
 end
+
+-- Expose for EditMode and slash commands
+ns.ApplyLayout = ApplyLayout
+ns.ScheduleLayout = ScheduleLayout
 
 -- ---------------------------------------------------------------------------
 -- Per-frame hook
@@ -167,6 +153,15 @@ local function HookFrame(frame)
             self:SetPoint("BOTTOMLEFT", viewer, "BOTTOMLEFT", self._arTargetX, self._arTargetY)
         end
         self._arSettingPos = false
+    end)
+
+    -- Visibility changes (SetIsActive → SetShown) can flip icons without
+    -- triggering Layout() or SetCooldownID — catch those too.
+    hooksecurefunc(frame, "Show", function(self)
+        if self:GetParent() == viewer then ScheduleLayout() end
+    end)
+    hooksecurefunc(frame, "Hide", function(self)
+        if self:GetParent() == viewer then ScheduleLayout() end
     end)
 end
 
@@ -242,14 +237,14 @@ local function InstallHooks()
             viewer._arShouldShowPatched = true
         end
 
-        -- Prevent Blizzard from overriding our grid size on the viewer
-        hooksecurefunc(viewer, "SetSize", function(self)
-            if self._arSettingSize then return end
-            if not self._arTargetW then return end
-            self._arSettingSize = true
-            self:SetSize(self._arTargetW, self._arTargetH)
-            self._arSettingSize = false
-        end)
+        -- Neutralise the C++ GridLayoutFrame engine so it doesn't fight
+        -- our grid.  We still let Blizzard update iconPadding/stride/etc
+        -- on the frame; we just redirect Layout() into our own layout.
+        local origLayout = viewer.Layout
+        viewer.Layout = function(self)
+            ScheduleLayout()
+        end
+        viewer._arOrigLayout = origLayout
 
         local children = { viewer:GetChildren() }
         for _, child in ipairs(children) do
