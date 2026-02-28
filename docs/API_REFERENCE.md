@@ -5,7 +5,7 @@
 
 ---
 
-## Source of thruth for the API references
+## Source of truth for the API references
 
 > https://warcraft.wiki.gg/wiki/World_of_Warcraft_API
 > https://github.com/Gethe/wow-ui-source/tree/live/Interface/AddOns/Blizzard_APIDocumentationGenerated
@@ -28,9 +28,24 @@ Three viewer instances: Essential Cooldowns, Utility Cooldowns, Tracked Buffs (`
 
 | Method | Notes |
 |---|---|
-| `OnAcquireItemFrame(frame)` | Called when a new icon is acquired. Primary hook point. |
-| `RefreshData()` | Refreshes all displayed data. |
+| `OnAcquireItemFrame(frame)` | Called when a new icon is acquired. Sets scale. Primary hook point. |
+| `RefreshLayout()` | Releases/re-acquires frames, sets grid props, calls `Layout()`. Triggered by `OnShow()` and settings changes. |
+| `Layout()` | C++ GridLayoutFrame engine — positions children. AuraRows overrides this. |
+| `UpdateShownState()` | Toggles viewer visibility via `SetShown()`. Triggers `OnShow()`/`OnHide()`. |
+| `SetIsEditing(editing)` | Toggles Edit Mode. Calls `RefreshLayout()` + `UpdateShownState()`. |
+| `RefreshData()` | Refreshes all displayed data on active item frames. |
+| `OnShow()` | Registers `UNIT_AURA`, `SPELL_UPDATE_COOLDOWN`, `PLAYER_TOTEM_UPDATE`, `COOLDOWN_VIEWER_SPELL_OVERRIDE_UPDATED`, `UNIT_TARGET`. Calls `RefreshLayout()`. |
+| `OnHide()` | Unregisters all events registered in `OnShow()`. |
 | `CacheChargeValues()` | ⚠️ Known 12.0 bug — crashes with Secret charge values. |
+
+### CooldownViewerItemMixin (per-icon)
+
+| Method | Notes |
+|---|---|
+| `SetIsActive(active)` | Sets active state → calls `UpdateShownState()` → `SetShown()`. |
+| `UpdateShownState()` | Shows/hides individual icon based on cooldownID, activity, edit mode. |
+| `RefreshData()` | Refreshes texture, color, cooldown, charges, border, overlay. |
+| `RefreshActive()` | Evaluates `ShouldBeActive()` and calls `SetIsActive()`. |
 
 ### CooldownViewerItemDataMixin
 
