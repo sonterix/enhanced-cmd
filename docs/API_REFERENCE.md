@@ -5,6 +5,13 @@
 
 ---
 
+## Source of thruth for the API references
+
+> https://warcraft.wiki.gg/wiki/World_of_Warcraft_API
+> https://github.com/Gethe/wow-ui-source/tree/live/Interface/AddOns/Blizzard_APIDocumentationGenerated
+
+---
+
 ## TOC Interface Version
 
 Addons **must** declare `## Interface: 120000` (or higher). There is no player override — strictly enforced in 12.0.
@@ -186,22 +193,3 @@ Cooldown:SetCooldownFromExpirationTime(...)
 Cooldown:SetPaused(...)
 Cooldown:GetCountdownFontString()
 ```
-
----
-
-## Documentation Sources
-
-| Resource | URL |
-|---|---|
-| WoW API | https://warcraft.wiki.gg/wiki/World_of_Warcraft_API |
-| Patch 12.0.0 API changes | https://warcraft.wiki.gg/wiki/Patch_12.0.0/API_changes |
-| Patch 12.0.1 API changes | https://warcraft.wiki.gg/wiki/Patch_12.0.1/API_changes |
-| Cooldown Manager | https://warcraft.wiki.gg/wiki/Cooldown_Manager |
-| Edit Mode | https://warcraft.wiki.gg/wiki/Edit_Mode |
-| EventRegistry | https://warcraft.wiki.gg/wiki/EventRegistry |
-| hooksecurefunc | https://warcraft.wiki.gg/wiki/API_hooksecurefunc |
-| C_Timer.NewTimer | https://warcraft.wiki.gg/wiki/API_C_Timer.NewTimer |
-| Blizzard Menu guide | https://warcraft.wiki.gg/wiki/Blizzard_Menu_implementation_guide |
-| WoW UI Source | https://github.com/gethe/wow-ui-source |
-| LibEditMode | https://github.com/p3lim-wow/LibEditMode |
-| Addon Changes for Midnight | https://www.wowhead.com/news/majority-of-addon-changes-finalized-for-midnight-pre-patch-whitelisted-spells-379738 |
