@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.1] - 2026-02-28
+
+### Fixed
+- Icon spacing now uses Blizzard's native `iconPadding` instead of hardcoded value — respects CDM padding slider
+- Added `Show`/`Hide` hooks on icon frames for full Blizzard trigger coverage (catches `SetIsActive` → `SetShown` visibility changes from `UNIT_AURA`, `SPELL_UPDATE_COOLDOWN`, `PLAYER_TOTEM_UPDATE` events)
+- Replaced `SetSize` hook with `Layout()` override to neutralize Blizzard's GridLayoutFrame engine
+
 ## [1.2.0] - 2026-02-27
 
 ### Added
