@@ -8,9 +8,6 @@ ns.DEFAULTS = {
     align         = "LEFT",
 }
 
--- Layout constants
-ns.ICON_SPACING = 2
-
 -- Display text for UI labels
 ns.DIRECTION_DISPLAY = { DOWN = "Down", UP = "Up" }
 ns.ALIGN_DISPLAY     = { LEFT = "Left", CENTER = "Center", RIGHT = "Right" }

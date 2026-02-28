@@ -38,7 +38,6 @@ All files share a `ns` table via `local _, ns = ...`. No addon globals except `A
 | Key | Set by | Used by | Description |
 |---|---|---|---|
 | `ns.DEFAULTS` | Config | Core | Default SavedVariable values |
-| `ns.ICON_SPACING` | Config | Core | Pixel spacing between icons |
 | `ns.DIRECTION_DISPLAY` | Config | Core, EditMode | `"DOWN"→"Down"` display map |
 | `ns.ALIGN_DISPLAY` | Config | Core, EditMode | `"LEFT"→"Left"` display map |
 | `ns.db` | Core | EditMode | Reference to `AuraRowsDB` |
