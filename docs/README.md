@@ -146,8 +146,10 @@ The addon hooks `EditModeManagerFrame:SelectSystem(systemFrame)` to detect when 
 ```
 AuraRows/
   AuraRows.toc       -- Addon metadata, Interface version, SavedVariables
-  AuraRows.lua        -- Entire addon implementation (~540 lines)
+  Config.lua         -- Constants, defaults, display maps
+  Core.lua           -- Layout engine, hooks, init, slash commands, events
+  EditMode.lua       -- Edit Mode settings panel
   docs/
-    README.md         -- This file
-    CHANGELOG.md      -- Version history
+    README.md        -- This file
+    CHANGELOG.md     -- Version history
 ```
