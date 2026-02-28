@@ -72,7 +72,6 @@ child.OutOfRange     -- out-of-range overlay
 ### CooldownViewerSettings
 
 ```lua
-CooldownViewerSettings:GetLayoutManager()
 EventRegistry "CooldownViewerSettings.OnDataChanged"  -- fires on CDM settings change
 ```
 

@@ -11,7 +11,7 @@ local layoutTimer = nil
 local VERSION
 
 -- ---------------------------------------------------------------------------
--- Layout
+-- Layout — positions visible icons in a multi-row grid and sizes the viewer
 -- ---------------------------------------------------------------------------
 
 local visibleBuf = {}
@@ -23,6 +23,7 @@ local function ApplyLayout()
         return
     end
 
+    -- Collect visible icon children
     wipe(visibleBuf)
     local children = { viewer:GetChildren() }
     local n = 0
@@ -36,6 +37,7 @@ local function ApplyLayout()
 
     if n == 0 then return end
 
+    -- Sort by Blizzard's layout ordering
     table.sort(visibleBuf, function(a, b)
         return (a.layoutIndex or 0) < (b.layoutIndex or 0)
     end)
@@ -46,11 +48,16 @@ local function ApplyLayout()
 
     local scale = visibleBuf[1]:GetScale()
     if scale < 0.01 then scale = 1 end
-    local iconW = visibleBuf[1]:GetWidth() * scale
-    local iconH = visibleBuf[1]:GetHeight() * scale
+
+    -- SetPoint offsets are in the CHILD's coordinate space and get multiplied
+    -- by the child's scale automatically.  Use unscaled dimensions for
+    -- positioning so coordinates aren't double-scaled.
+    local iconW = visibleBuf[1]:GetWidth()
+    local iconH = visibleBuf[1]:GetHeight()
     if iconW < 1 then iconW = 36 end
     if iconH < 1 then iconH = 36 end
 
+    -- Blizzard's iconPadding + additional offset gives the native inter-icon gap
     local spacing = 0
     if viewer.iconPadding ~= nil then
         local offset = viewer.GetAdditionalPaddingOffset
@@ -63,13 +70,14 @@ local function ApplyLayout()
     local numRows = math.ceil(totalIcons / maxPerRow)
     local fullRowWidth = numCols * (iconW + spacing) - spacing
 
+    -- Position each icon in the grid
     for i = 1, n do
         local frame = visibleBuf[i]
         local idx = i - 1
         local col = idx % maxPerRow
         local row = math.floor(idx / maxPerRow)
 
-        -- Alignment offset for incomplete rows
+        -- Shift incomplete last rows for center/right alignment
         local alignOffset = 0
         if align ~= "LEFT" then
             local rowStart = row * maxPerRow
@@ -85,6 +93,7 @@ local function ApplyLayout()
         local x = alignOffset + col * (iconW + spacing)
         local y = row * (iconH + spacing)
 
+        -- Cache target position for the SetPoint hook to enforce
         frame._arTargetX = x
         frame._arTargetY = y
         frame._arSettingPos = true
@@ -97,29 +106,21 @@ local function ApplyLayout()
         frame._arSettingPos = false
     end
 
-    local totalW = numCols * (iconW + spacing) - spacing
-    local totalH = numRows * (iconH + spacing) - spacing
+    -- Viewer size is in the viewer's own coordinate space (not child-scaled),
+    -- so scale up the unscaled grid dimensions.
+    local totalW = (numCols * (iconW + spacing) - spacing) * scale
+    local totalH = (numRows * (iconH + spacing) - spacing) * scale
     if totalW > 0 and totalH > 0 then
         viewer:SetSize(totalW, totalH)
     end
 end
 
 -- ---------------------------------------------------------------------------
--- Debounced scheduling
+-- Debounced scheduling — batches rapid triggers into a single next-frame layout
 -- ---------------------------------------------------------------------------
 
 local function ScheduleLayout()
     if layoutTimer then layoutTimer:Cancel() end
-
-    -- Clean up frames that are no longer children of the viewer.
-    -- Do NOT clear _arTargetX/Y — let hooks keep enforcing the last known
-    -- good positions during transitions (e.g. Edit Mode exit).
-    -- ApplyLayout() will overwrite with fresh values next frame.
-    for frame in pairs(hookedFrames) do
-        if frame:GetParent() ~= viewer then
-            hookedFrames[frame] = nil
-        end
-    end
 
     layoutTimer = C_Timer.NewTimer(0, function()
         layoutTimer = nil
@@ -127,18 +128,18 @@ local function ScheduleLayout()
     end)
 end
 
--- Expose for EditMode and slash commands
 ns.ApplyLayout = ApplyLayout
 ns.ScheduleLayout = ScheduleLayout
 
 -- ---------------------------------------------------------------------------
--- Per-frame hook
+-- Per-frame hook — overrides Blizzard's SetPoint and relayouts on show/hide
 -- ---------------------------------------------------------------------------
 
 local function HookFrame(frame)
     if hookedFrames[frame] then return end
     hookedFrames[frame] = true
 
+    -- Intercept Blizzard repositioning and enforce our cached grid position
     hooksecurefunc(frame, "SetPoint", function(self)
         if self._arSettingPos then return end
         if not self._arTargetX then return end
@@ -166,13 +167,14 @@ local function HookFrame(frame)
 end
 
 -- ---------------------------------------------------------------------------
--- CDM hooks
+-- Mixin hooks — catch new frames, cooldown changes, and CDM settings updates
 -- ---------------------------------------------------------------------------
 
 local function InstallMixinHooks()
     if mixinHooksInstalled then return end
     mixinHooksInstalled = true
 
+    -- Hook new icon frame acquisition (fires when Blizzard creates/recycles icons)
     if CooldownViewerMixin and CooldownViewerMixin.OnAcquireItemFrame then
         hooksecurefunc(CooldownViewerMixin, "OnAcquireItemFrame", function(self, frame)
             if self ~= viewer then return end
@@ -181,6 +183,7 @@ local function InstallMixinHooks()
         end)
     end
 
+    -- Hook cooldown assignment/removal (triggers relayout when buffs change)
     if CooldownViewerItemDataMixin then
         local function IsOurFrame(frame)
             local parent = frame and frame:GetParent()
@@ -199,16 +202,7 @@ local function InstallMixinHooks()
         end
     end
 
-    if CooldownViewerSettings then
-        local layoutMgr = CooldownViewerSettings.GetLayoutManager
-            and CooldownViewerSettings:GetLayoutManager()
-        if layoutMgr and layoutMgr.NotifyListeners then
-            hooksecurefunc(layoutMgr, "NotifyListeners", function()
-                ScheduleLayout()
-            end)
-        end
-    end
-
+    -- Relayout when CDM settings change (icon size, padding, etc.)
     if EventRegistry then
         EventRegistry:RegisterCallback(
             "CooldownViewerSettings.OnDataChanged",
@@ -217,6 +211,10 @@ local function InstallMixinHooks()
         )
     end
 end
+
+-- ---------------------------------------------------------------------------
+-- Hook installation — patches the viewer instance once it's found
+-- ---------------------------------------------------------------------------
 
 local function InstallHooks()
     if hooksInstalled then return end
@@ -237,15 +235,12 @@ local function InstallHooks()
             viewer._arShouldShowPatched = true
         end
 
-        -- Neutralise the C++ GridLayoutFrame engine so it doesn't fight
-        -- our grid.  We still let Blizzard update iconPadding/stride/etc
-        -- on the frame; we just redirect Layout() into our own layout.
-        local origLayout = viewer.Layout
+        -- Override Blizzard's C++ GridLayoutFrame engine with our grid layout
         viewer.Layout = function(self)
             ScheduleLayout()
         end
-        viewer._arOrigLayout = origLayout
 
+        -- Hook all existing children
         local children = { viewer:GetChildren() }
         for _, child in ipairs(children) do
             HookFrame(child)
@@ -261,10 +256,11 @@ local function InstallHooks()
 end
 
 -- ---------------------------------------------------------------------------
--- Deferred init
+-- Deferred init — polls for BuffIconCooldownViewer (may not exist immediately)
 -- ---------------------------------------------------------------------------
 
 local function TryInit()
+    -- Handle viewer recreation across loading screens
     local newViewer = _G["BuffIconCooldownViewer"]
     if newViewer and newViewer ~= viewer then
         viewer = newViewer
@@ -277,6 +273,7 @@ local function TryInit()
     end
     if viewer then return end
 
+    -- Poll every 0.5s for up to 10s until the viewer appears
     local attempts = 0
     local ticker
     ticker = C_Timer.NewTicker(0.5, function()
@@ -296,7 +293,7 @@ local function TryInit()
 end
 
 -- ---------------------------------------------------------------------------
--- Slash commands
+-- Slash commands — /aurarows or /ar
 -- ---------------------------------------------------------------------------
 
 local function RegisterSlashCommands()
@@ -347,7 +344,8 @@ local function RegisterSlashCommands()
 end
 
 -- ---------------------------------------------------------------------------
--- Event handler
+-- Events — ADDON_LOADED (init DB), PLAYER_ENTERING_WORLD (find viewer),
+--          PLAYER_REGEN_ENABLED (flush deferred layout after combat)
 -- ---------------------------------------------------------------------------
 
 local eventFrame = CreateFrame("Frame")

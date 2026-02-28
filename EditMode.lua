@@ -5,7 +5,7 @@ local editModePanel
 local editModeHooked = false
 
 -- ---------------------------------------------------------------------------
--- Panel creation
+-- Panel creation — builds the settings panel (slider + 2 dropdowns)
 -- ---------------------------------------------------------------------------
 
 local function CreateEditModePanel()
@@ -30,12 +30,11 @@ local function CreateEditModePanel()
     local CONTENT_LEFT = 15
     local ROW_HEIGHT = 32
 
-    -- Title — matches "Tracked Buffs" header style
     local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     title:SetPoint("TOP", 0, -12)
     title:SetText("AuraRows")
 
-    -- Row 1: Per Row — [label] [slider + value]
+    -- Row 1: Per Row — [label] [slider] [value]
     local row1 = CreateFrame("Frame", nil, f)
     row1:SetHeight(ROW_HEIGHT)
     row1:SetPoint("TOPLEFT", f, "TOPLEFT", CONTENT_LEFT, -42)
@@ -130,7 +129,6 @@ local function CreateEditModePanel()
     f.alignDropdown = alignDropdown
     editModePanel = f
 
-    -- Set a default size — will be overridden by ShowAuraRowsPanel
     f:SetSize(480, 160)
 end
 
@@ -138,6 +136,7 @@ end
 -- Panel refresh / show / hide
 -- ---------------------------------------------------------------------------
 
+-- Syncs all panel widgets with current saved variable values
 local function RefreshEditModePanel()
     if not editModePanel then return end
     local db = ns.db
@@ -156,11 +155,11 @@ local function RefreshEditModePanel()
     end
 end
 
+-- Anchors panel below Blizzard's settings dialog and shows it
 local function ShowAuraRowsPanel()
     CreateEditModePanel()
     RefreshEditModePanel()
 
-    -- Match width to Blizzard's settings dialog
     local blizzDialog = _G["EditModeSystemSettingsDialog"]
     local viewer = ns.viewer
     if blizzDialog and blizzDialog:IsShown() then
@@ -185,7 +184,7 @@ local function HideAuraRowsPanel()
 end
 
 -- ---------------------------------------------------------------------------
--- Edit Mode hook setup
+-- Edit Mode hooks — show/hide panel when Tracked Buffs system is selected
 -- ---------------------------------------------------------------------------
 
 function ns.SetupEditMode()
@@ -194,35 +193,9 @@ function ns.SetupEditMode()
     editModeHooked = true
 
     local ok, err = pcall(function()
-        -- Show panel only when Tracked Buffs (our viewer) is selected
         hooksecurefunc(EditModeManagerFrame, "SelectSystem", function(self, systemFrame)
             local buffViewer = _G["BuffIconCooldownViewer"]
             if systemFrame == buffViewer then
-                -- Safety: apply ShouldShowSetting override if not yet patched
-                -- (covers timing gaps, viewer recreation, or mixin reapplication)
-                if not systemFrame._arShouldShowPatched then
-                    local origShouldShow = systemFrame.ShouldShowSetting
-                    if origShouldShow then
-                        systemFrame.ShouldShowSetting = function(s, settingID)
-                            if settingID == Enum.EditModeCooldownViewerSetting.IconDirection then
-                                return false
-                            end
-                            return origShouldShow(s, settingID)
-                        end
-                        systemFrame._arShouldShowPatched = true
-                        -- Hide the already-rendered IconDirection frame directly
-                        -- (avoids re-triggering UpdateSettings which can reset other settings)
-                        local dialog = _G["EditModeSystemSettingsDialog"]
-                        if dialog and dialog.Settings then
-                            for _, child in pairs({dialog.Settings:GetChildren()}) do
-                                if child.setting == Enum.EditModeCooldownViewerSetting.IconDirection then
-                                    child:Hide()
-                                    break
-                                end
-                            end
-                        end
-                    end
-                end
                 ShowAuraRowsPanel()
                 if ns.ScheduleLayout then ns.ScheduleLayout() end
             else
@@ -230,15 +203,13 @@ function ns.SetupEditMode()
             end
         end)
 
-        -- Hide when selection is cleared
         if EditModeManagerFrame.ClearSelectedSystem then
             hooksecurefunc(EditModeManagerFrame, "ClearSelectedSystem", function()
                 HideAuraRowsPanel()
             end)
         end
 
-        -- Safety: hide on Edit Mode exit and refresh layout so stale
-        -- cached positions don't persist after the transition
+        -- Hide panel on Edit Mode exit and refresh layout to clear stale positions
         hooksecurefunc(EditModeManagerFrame, "ExitEditMode", function()
             HideAuraRowsPanel()
             if ns.ScheduleLayout then ns.ScheduleLayout() end

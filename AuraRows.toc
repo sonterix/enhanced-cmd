@@ -2,7 +2,7 @@
 ## Title: AuraRows
 ## Notes: Multi-row layout for the Cooldown Manager aura tracker
 ## Author: Sonterix
-## Version: 1.2.1
+## Version: 0.3.0
 ## SavedVariables: AuraRowsDB
 
 Config.lua
