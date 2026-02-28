@@ -14,12 +14,17 @@ local viewer
 local hookedFrames = {}
 local pendingLayout = false
 local hooksInstalled = false
+local editModeHooked = false
 local layoutTimer = nil
-local SetupEditMode  -- forward declaration
+local VERSION
+local ICON_SPACING = 2
+local SetupEditMode -- forward declaration
 
 -- ---------------------------------------------------------------------------
 -- Layout
 -- ---------------------------------------------------------------------------
+
+local visibleBuf = {}
 
 local function ApplyLayout()
     if not viewer then return end
@@ -28,33 +33,40 @@ local function ApplyLayout()
         return
     end
 
+    wipe(visibleBuf)
     local children = { viewer:GetChildren() }
-    local visible = {}
-
-    for _, child in ipairs(children) do
+    local n = 0
+    for i = 1, #children do
+        local child = children[i]
         if child.cooldownID and child:IsShown() then
-            visible[#visible + 1] = child
+            n = n + 1
+            visibleBuf[n] = child
         end
     end
 
-    if #visible == 0 then return end
+    if n == 0 then return end
+
+    table.sort(visibleBuf, function(a, b)
+        return (a.layoutIndex or 0) < (b.layoutIndex or 0)
+    end)
 
     local maxPerRow = db.maxPerRow
     local growDown = (db.growDirection == "DOWN")
-    local align = db.align or "LEFT"
+    local align = db.align
 
-    local iconW = visible[1]:GetWidth()
-    local iconH = visible[1]:GetHeight()
+    local iconW = visibleBuf[1]:GetWidth()
+    local iconH = visibleBuf[1]:GetHeight()
     if iconW < 1 then iconW = 36 end
     if iconH < 1 then iconH = 36 end
-    local spacing = 2
+    local spacing = ICON_SPACING
 
-    local totalIcons = #visible
+    local totalIcons = n
     local numCols = math.min(maxPerRow, totalIcons)
     local numRows = math.ceil(totalIcons / maxPerRow)
     local fullRowWidth = numCols * (iconW + spacing) - spacing
 
-    for i, frame in ipairs(visible) do
+    for i = 1, n do
+        local frame = visibleBuf[i]
         local idx = i - 1
         local col = idx % maxPerRow
         local row = math.floor(idx / maxPerRow)
@@ -113,8 +125,12 @@ local function ScheduleLayout()
         viewer._arTargetH = nil
     end
     for frame in pairs(hookedFrames) do
-        frame._arTargetX = nil
-        frame._arTargetY = nil
+        if frame:GetParent() ~= viewer then
+            hookedFrames[frame] = nil
+        else
+            frame._arTargetX = nil
+            frame._arTargetY = nil
+        end
     end
 
     layoutTimer = C_Timer.NewTimer(0, function()
@@ -134,6 +150,7 @@ local function HookFrame(frame)
     hooksecurefunc(frame, "SetPoint", function(self)
         if self._arSettingPos then return end
         if not self._arTargetX then return end
+        if self:GetParent() ~= viewer then return end
 
         local growDown = (db.growDirection == "DOWN")
         self._arSettingPos = true
@@ -155,65 +172,72 @@ local function InstallHooks()
     if hooksInstalled then return end
     hooksInstalled = true
 
-    if CooldownViewerMixin and CooldownViewerMixin.OnAcquireItemFrame then
-        hooksecurefunc(CooldownViewerMixin, "OnAcquireItemFrame", function(self, frame)
-            if self ~= viewer then return end
-            HookFrame(frame)
-            ScheduleLayout()
-        end)
-    end
-
-    if CooldownViewerItemDataMixin then
-        local function IsOurFrame(frame)
-            local parent = frame and frame:GetParent()
-            return parent == viewer
-        end
-
-        if CooldownViewerItemDataMixin.SetCooldownID then
-            hooksecurefunc(CooldownViewerItemDataMixin, "SetCooldownID", function(self)
-                if IsOurFrame(self) then ScheduleLayout() end
-            end)
-        end
-        if CooldownViewerItemDataMixin.ClearCooldownID then
-            hooksecurefunc(CooldownViewerItemDataMixin, "ClearCooldownID", function(self)
-                if IsOurFrame(self) then ScheduleLayout() end
-            end)
-        end
-    end
-
-    if CooldownViewerSettings then
-        local layoutMgr = CooldownViewerSettings.GetLayoutManager
-            and CooldownViewerSettings:GetLayoutManager()
-        if layoutMgr and layoutMgr.NotifyListeners then
-            hooksecurefunc(layoutMgr, "NotifyListeners", function()
+    local ok, err = pcall(function()
+        if CooldownViewerMixin and CooldownViewerMixin.OnAcquireItemFrame then
+            hooksecurefunc(CooldownViewerMixin, "OnAcquireItemFrame", function(self, frame)
+                if self ~= viewer then return end
+                HookFrame(frame)
                 ScheduleLayout()
             end)
         end
-    end
 
-    if EventRegistry then
-        EventRegistry:RegisterCallback(
-            "CooldownViewerSettings.OnDataChanged",
-            ScheduleLayout,
-            ADDON_NAME
-        )
-    end
+        if CooldownViewerItemDataMixin then
+            local function IsOurFrame(frame)
+                local parent = frame and frame:GetParent()
+                return parent == viewer
+            end
 
-    -- Prevent Blizzard from overriding our grid size on the viewer
-    hooksecurefunc(viewer, "SetSize", function(self)
-        if self._arSettingSize then return end
-        if not self._arTargetW then return end
-        self._arSettingSize = true
-        self:SetSize(self._arTargetW, self._arTargetH)
-        self._arSettingSize = false
+            if CooldownViewerItemDataMixin.SetCooldownID then
+                hooksecurefunc(CooldownViewerItemDataMixin, "SetCooldownID", function(self)
+                    if IsOurFrame(self) then ScheduleLayout() end
+                end)
+            end
+            if CooldownViewerItemDataMixin.ClearCooldownID then
+                hooksecurefunc(CooldownViewerItemDataMixin, "ClearCooldownID", function(self)
+                    if IsOurFrame(self) then ScheduleLayout() end
+                end)
+            end
+        end
+
+        if CooldownViewerSettings then
+            local layoutMgr = CooldownViewerSettings.GetLayoutManager
+                and CooldownViewerSettings:GetLayoutManager()
+            if layoutMgr and layoutMgr.NotifyListeners then
+                hooksecurefunc(layoutMgr, "NotifyListeners", function()
+                    ScheduleLayout()
+                end)
+            end
+        end
+
+        if EventRegistry then
+            EventRegistry:RegisterCallback(
+                "CooldownViewerSettings.OnDataChanged",
+                ScheduleLayout,
+                ADDON_NAME
+            )
+        end
+
+        -- Prevent Blizzard from overriding our grid size on the viewer
+        hooksecurefunc(viewer, "SetSize", function(self)
+            if self._arSettingSize then return end
+            if not self._arTargetW then return end
+            self._arSettingSize = true
+            self:SetSize(self._arTargetW, self._arTargetH)
+            self._arSettingSize = false
+        end)
+
+        local children = { viewer:GetChildren() }
+        for _, child in ipairs(children) do
+            HookFrame(child)
+        end
+
+        ApplyLayout()
     end)
 
-    local children = { viewer:GetChildren() }
-    for _, child in ipairs(children) do
-        HookFrame(child)
+    if not ok then
+        hooksInstalled = false
+        print("|cffff6600AuraRows:|r Hook installation failed — layout disabled.")
     end
-
-    ApplyLayout()
 end
 
 -- ---------------------------------------------------------------------------
@@ -277,7 +301,6 @@ local function RegisterSlashCommands()
             else
                 print("|cff00ccffAuraRows:|r Usage: /ar rows <1-40>")
             end
-
         elseif cmd == "grow" or cmd == "direction" then
             local dir = arg:upper()
             if dir == "UP" or dir == "DOWN" then
@@ -287,7 +310,6 @@ local function RegisterSlashCommands()
             else
                 print("|cff00ccffAuraRows:|r Usage: /ar grow <up|down>")
             end
-
         elseif cmd == "align" then
             local a = arg:upper()
             if a == "LEFT" or a == "CENTER" or a == "RIGHT" then
@@ -297,11 +319,10 @@ local function RegisterSlashCommands()
             else
                 print("|cff00ccffAuraRows:|r Usage: /ar align <left|center|right>")
             end
-
         else
-            print("|cff00ccffAuraRows|r v1.2.0")
+            print("|cff00ccffAuraRows|r v" .. (VERSION or "?"))
             local dirDisplay = DIRECTION_DISPLAY[db.growDirection]
-            local alignDisplay = ALIGN_DISPLAY[db.align or "LEFT"]
+            local alignDisplay = ALIGN_DISPLAY[db.align]
             print("  Current: " .. db.maxPerRow .. " per row, grow " .. dirDisplay .. ", align " .. alignDisplay)
             print("  /ar rows <1-40>              - Icons per row")
             print("  /ar grow <up|down>           - Row growth direction")
@@ -323,9 +344,11 @@ local function CreateEditModePanel()
     f:EnableMouse(true)
     f:SetFrameStrata("DIALOG")
     f:SetBackdrop({
-        bgFile   = "Interface\\DialogFrame\\UI-DialogBox-Background",
+        bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
         edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
-        tile = true, tileSize = 32, edgeSize = 16,
+        tile = true,
+        tileSize = 32,
+        edgeSize = 16,
         insets = { left = 4, right = 4, top = 4, bottom = 4 },
     })
     f:Hide()
@@ -356,7 +379,7 @@ local function CreateEditModePanel()
     perRowValue:SetJustifyH("RIGHT")
     perRowValue:SetText(tostring(db.maxPerRow))
 
-    local slider = CreateFrame("Slider", "AuraRowsPerRowSlider", row1, "OptionsSliderTemplate")
+    local slider = CreateFrame("Slider", "AuraRowsPerRowSlider", row1, "MinimalSliderTemplate")
     slider:SetPoint("LEFT", perRowLabel, "RIGHT", 5, 0)
     slider:SetPoint("RIGHT", perRowValue, "LEFT", -8, 0)
     slider:SetHeight(17)
@@ -364,10 +387,6 @@ local function CreateEditModePanel()
     slider:SetValueStep(1)
     slider:SetObeyStepOnDrag(true)
     slider:SetValue(db.maxPerRow)
-    -- Hide the default OptionsSliderTemplate labels
-    _G[slider:GetName() .. "Low"]:SetText("")
-    _G[slider:GetName() .. "High"]:SetText("")
-    _G[slider:GetName() .. "Text"]:SetText("")
     slider:SetScript("OnValueChanged", function(self, value)
         value = math.floor(value + 0.5)
         db.maxPerRow = value
@@ -387,25 +406,22 @@ local function CreateEditModePanel()
     growLabel:SetJustifyH("LEFT")
     growLabel:SetText("Growth")
 
-    local dropdown = CreateFrame("Frame", "AuraRowsGrowDropdown", row2, "UIDropDownMenuTemplate")
-    dropdown:SetPoint("LEFT", growLabel, "RIGHT", -15, -2)
-    dropdown:SetPoint("RIGHT", row2, "RIGHT", 0, 0)
-    UIDropDownMenu_Initialize(dropdown, function(self, level)
-        local info = UIDropDownMenu_CreateInfo()
-        for _, dir in ipairs({"DOWN", "UP"}) do
-            info.text = DIRECTION_DISPLAY[dir]
-            info.value = dir
-            info.checked = (db.growDirection == dir)
-            info.func = function(btn)
-                db.growDirection = btn.value
-                UIDropDownMenu_SetText(dropdown, DIRECTION_DISPLAY[btn.value])
-                CloseDropDownMenus()
-                ApplyLayout()
-            end
-            UIDropDownMenu_AddButton(info)
+    local dropdown = CreateFrame("DropdownButton", "AuraRowsGrowDropdown", row2, "WowStyle1DropdownTemplate")
+    dropdown:SetPoint("LEFT", growLabel, "RIGHT", 5, 0)
+    dropdown:SetDefaultText(DIRECTION_DISPLAY[db.growDirection])
+    dropdown:SetupMenu(function(owner, rootDescription)
+        for _, dir in ipairs({ "DOWN", "UP" }) do
+            rootDescription:CreateRadio(
+                DIRECTION_DISPLAY[dir],
+                function() return db.growDirection == dir end,
+                function()
+                    db.growDirection = dir
+                    ApplyLayout()
+                end,
+                dir
+            )
         end
     end)
-    UIDropDownMenu_SetText(dropdown, DIRECTION_DISPLAY[db.growDirection])
 
     -- Row 3: Align — [label] [dropdown]
     local row3 = CreateFrame("Frame", nil, f)
@@ -419,28 +435,23 @@ local function CreateEditModePanel()
     alignLabel:SetJustifyH("LEFT")
     alignLabel:SetText("Align")
 
-    local alignDropdown = CreateFrame("Frame", "AuraRowsAlignDropdown", row3, "UIDropDownMenuTemplate")
-    alignDropdown:SetPoint("LEFT", alignLabel, "RIGHT", -15, -2)
-    alignDropdown:SetPoint("RIGHT", row3, "RIGHT", 0, 0)
-    UIDropDownMenu_Initialize(alignDropdown, function(self, level)
-        local info = UIDropDownMenu_CreateInfo()
-        for _, a in ipairs({"LEFT", "CENTER", "RIGHT"}) do
-            info.text = ALIGN_DISPLAY[a]
-            info.value = a
-            info.checked = (db.align == a)
-            info.func = function(btn)
-                db.align = btn.value
-                UIDropDownMenu_SetText(alignDropdown, ALIGN_DISPLAY[btn.value])
-                CloseDropDownMenus()
-                ApplyLayout()
-            end
-            UIDropDownMenu_AddButton(info)
+    local alignDropdown = CreateFrame("DropdownButton", "AuraRowsAlignDropdown", row3, "WowStyle1DropdownTemplate")
+    alignDropdown:SetPoint("LEFT", alignLabel, "RIGHT", 5, 0)
+    alignDropdown:SetDefaultText(ALIGN_DISPLAY[db.align])
+    alignDropdown:SetupMenu(function(owner, rootDescription)
+        for _, a in ipairs({ "LEFT", "CENTER", "RIGHT" }) do
+            rootDescription:CreateRadio(
+                ALIGN_DISPLAY[a],
+                function() return db.align == a end,
+                function()
+                    db.align = a
+                    ApplyLayout()
+                end,
+                a
+            )
         end
     end)
-    UIDropDownMenu_SetText(alignDropdown, ALIGN_DISPLAY[db.align])
 
-    f.growDropdown = dropdown
-    f.alignDropdown = alignDropdown
     f.perRowValue = perRowValue
     editModePanel = f
 
@@ -456,12 +467,6 @@ local function RefreshEditModePanel()
     end
     if editModePanel.perRowValue then
         editModePanel.perRowValue:SetText(tostring(db.maxPerRow))
-    end
-    if editModePanel.growDropdown then
-        UIDropDownMenu_SetText(editModePanel.growDropdown, DIRECTION_DISPLAY[db.growDirection])
-    end
-    if editModePanel.alignDropdown then
-        UIDropDownMenu_SetText(editModePanel.alignDropdown, ALIGN_DISPLAY[db.align or "LEFT"])
     end
 end
 
@@ -483,18 +488,6 @@ local function ShowAuraRowsPanel()
         editModePanel:SetPoint("TOP", UIParent, "TOP", 0, -100)
     end
 
-    -- Set dropdown widths to match slider area
-    local panelW = editModePanel:GetWidth()
-    local dropdownWidth = panelW - 120 - 15 * 2 - 25  -- LABEL_WIDTH - CONTENT_LEFT*2 - padding
-    if dropdownWidth > 80 then
-        if editModePanel.growDropdown then
-            UIDropDownMenu_SetWidth(editModePanel.growDropdown, dropdownWidth)
-        end
-        if editModePanel.alignDropdown then
-            UIDropDownMenu_SetWidth(editModePanel.alignDropdown, dropdownWidth)
-        end
-    end
-
     editModePanel:Show()
 end
 
@@ -506,6 +499,8 @@ end
 
 SetupEditMode = function()
     if not EditModeManagerFrame then return end
+    if editModeHooked then return end
+    editModeHooked = true
 
     local ok, err = pcall(function()
         -- Show panel only when Tracked Buffs (our viewer) is selected
@@ -555,11 +550,10 @@ eventFrame:SetScript("OnEvent", function(_, event, arg1)
             end
         end
         db = AuraRowsDB
+        VERSION = C_AddOns.GetAddOnMetadata(ADDON_NAME, "Version")
         RegisterSlashCommands()
-
     elseif event == "PLAYER_ENTERING_WORLD" then
         TryInit()
-
     elseif event == "PLAYER_REGEN_ENABLED" then
         if pendingLayout then
             pendingLayout = false
