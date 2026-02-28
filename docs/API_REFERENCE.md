@@ -1,6 +1,6 @@
-# API_REFERENCE.md — AuraRows Blizzard API Reference
+# API_REFERENCE.md — Enhanced CDM Blizzard API Reference
 
-> Reference for Midnight (12.0) WoW APIs used by or relevant to AuraRows.
+> Reference for Midnight (12.0) WoW APIs used by or relevant to Enhanced CDM.
 > This file is **not** loaded by Claude Code automatically — reference it manually when doing API-specific work.
 
 ---
@@ -30,7 +30,7 @@ Three viewer instances: Essential Cooldowns, Utility Cooldowns, Tracked Buffs (`
 |---|---|
 | `OnAcquireItemFrame(frame)` | Called when a new icon is acquired. Sets scale. Primary hook point. |
 | `RefreshLayout()` | Releases/re-acquires frames, sets grid props, calls `Layout()`. Triggered by `OnShow()` and settings changes. |
-| `Layout()` | C++ GridLayoutFrame engine — positions children. AuraRows overrides this. |
+| `Layout()` | C++ GridLayoutFrame engine — positions children. Enhanced CDM overrides this. |
 | `UpdateShownState()` | Toggles viewer visibility via `SetShown()`. Triggers `OnShow()`/`OnHide()`. |
 | `SetIsEditing(editing)` | Toggles Edit Mode. Calls `RefreshLayout()` + `UpdateShownState()`. |
 | `RefreshData()` | Refreshes all displayed data on active item frames. |
@@ -100,7 +100,7 @@ hooksecurefunc(EditModeManagerFrame, "ClearSelectedSystem", function(self) end)
 hooksecurefunc(EditModeManagerFrame, "ExitEditMode", function(self) end)
 ```
 
-**`EditModeSystemSettingsDialog`** — global frame for Blizzard's settings panel. AuraRows anchors below it. Always check existence via `_G["EditModeSystemSettingsDialog"]`.
+**`EditModeSystemSettingsDialog`** — global frame for Blizzard's settings panel. Enhanced CDM anchors below it. Always check existence via `_G["EditModeSystemSettingsDialog"]`.
 
 ```lua
 C_EditMode.GetLayouts()
@@ -122,7 +122,7 @@ handle:Cancel()
 handle:IsCancelled()
 ```
 
-`C_Timer.NewTimer(0, fn)` fires next frame, after Blizzard's layout pass. AuraRows uses this for debounced layout. Do **not** swap with `C_Timer.After`.
+`C_Timer.NewTimer(0, fn)` fires next frame, after Blizzard's layout pass. Enhanced CDM uses this for debounced layout. Do **not** swap with `C_Timer.After`.
 
 ---
 
@@ -147,7 +147,7 @@ hooksecurefunc([tbl,] functionName, hookfunc)
 - Multiple hooks stack
 - Hook return values are discarded
 - **11.0+ restriction:** Cannot hook 22 core Lua functions (`getmetatable`, `setmetatable`, `pairs`, `type`, `pcall`, `xpcall`, `select`, `next`, `unpack`, `wipe`, `rawget`, `rawset`, etc.)
-- All AuraRows hooks are on mixin/frame methods — not affected
+- All Enhanced CDM hooks are on mixin/frame methods — not affected
 
 ---
 

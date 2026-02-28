@@ -1,4 +1,4 @@
--- AuraRows: Edit Mode — settings panel shown when Tracked Buffs is selected
+-- Enhanced CDM: Edit Mode — settings panel shown when Tracked Buffs is selected
 local _, ns = ...
 
 local editModePanel
@@ -13,7 +13,7 @@ local function CreateEditModePanel()
 
     local db = ns.db
 
-    local f = CreateFrame("Frame", "AuraRowsEditModePanel", UIParent, "BackdropTemplate")
+    local f = CreateFrame("Frame", "EnhancedCDMEditModePanel", UIParent, "BackdropTemplate")
     f:EnableMouse(true)
     f:SetFrameStrata("DIALOG")
     f:SetBackdrop({
@@ -32,7 +32,7 @@ local function CreateEditModePanel()
 
     local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     title:SetPoint("TOP", 0, -12)
-    title:SetText("AuraRows")
+    title:SetText("Enhanced CDM")
 
     -- Row 1: Per Row — [label] [slider] [value]
     local row1 = CreateFrame("Frame", nil, f)
@@ -51,7 +51,7 @@ local function CreateEditModePanel()
     perRowValue:SetJustifyH("RIGHT")
     perRowValue:SetText(tostring(db.maxPerRow))
 
-    local slider = CreateFrame("Slider", "AuraRowsPerRowSlider", row1, "MinimalSliderTemplate")
+    local slider = CreateFrame("Slider", "EnhancedCDMPerRowSlider", row1, "MinimalSliderTemplate")
     slider:SetPoint("LEFT", perRowLabel, "RIGHT", 5, 0)
     slider:SetPoint("RIGHT", perRowValue, "LEFT", -8, 0)
     slider:SetHeight(17)
@@ -78,7 +78,7 @@ local function CreateEditModePanel()
     growLabel:SetJustifyH("LEFT")
     growLabel:SetText("Growth")
 
-    local dropdown = CreateFrame("DropdownButton", "AuraRowsGrowDropdown", row2, "WowStyle1DropdownTemplate")
+    local dropdown = CreateFrame("DropdownButton", "EnhancedCDMGrowDropdown", row2, "WowStyle1DropdownTemplate")
     dropdown:SetPoint("LEFT", growLabel, "RIGHT", 5, 0)
     dropdown:SetDefaultText(ns.DIRECTION_DISPLAY[db.growDirection])
     dropdown:SetupMenu(function(owner, rootDescription)
@@ -107,7 +107,7 @@ local function CreateEditModePanel()
     alignLabel:SetJustifyH("LEFT")
     alignLabel:SetText("Align")
 
-    local alignDropdown = CreateFrame("DropdownButton", "AuraRowsAlignDropdown", row3, "WowStyle1DropdownTemplate")
+    local alignDropdown = CreateFrame("DropdownButton", "EnhancedCDMAlignDropdown", row3, "WowStyle1DropdownTemplate")
     alignDropdown:SetPoint("LEFT", alignLabel, "RIGHT", 5, 0)
     alignDropdown:SetDefaultText(ns.ALIGN_DISPLAY[db.align])
     alignDropdown:SetupMenu(function(owner, rootDescription)
@@ -140,7 +140,7 @@ end
 local function RefreshEditModePanel()
     if not editModePanel then return end
     local db = ns.db
-    local slider = _G["AuraRowsPerRowSlider"]
+    local slider = _G["EnhancedCDMPerRowSlider"]
     if slider then
         slider:SetValue(db.maxPerRow)
     end
@@ -156,7 +156,7 @@ local function RefreshEditModePanel()
 end
 
 -- Anchors panel below Blizzard's settings dialog and shows it
-local function ShowAuraRowsPanel()
+local function ShowEnhancedCDMPanel()
     CreateEditModePanel()
     RefreshEditModePanel()
 
@@ -177,7 +177,7 @@ local function ShowAuraRowsPanel()
     editModePanel:Show()
 end
 
-local function HideAuraRowsPanel()
+local function HideEnhancedCDMPanel()
     if editModePanel then
         editModePanel:Hide()
     end
@@ -196,28 +196,28 @@ function ns.SetupEditMode()
         hooksecurefunc(EditModeManagerFrame, "SelectSystem", function(self, systemFrame)
             local buffViewer = _G["BuffIconCooldownViewer"]
             if systemFrame == buffViewer then
-                ShowAuraRowsPanel()
+                ShowEnhancedCDMPanel()
                 if ns.ScheduleLayout then ns.ScheduleLayout() end
             else
-                HideAuraRowsPanel()
+                HideEnhancedCDMPanel()
             end
         end)
 
         if EditModeManagerFrame.ClearSelectedSystem then
             hooksecurefunc(EditModeManagerFrame, "ClearSelectedSystem", function()
-                HideAuraRowsPanel()
+                HideEnhancedCDMPanel()
             end)
         end
 
         -- Hide panel on Edit Mode exit and refresh layout to clear stale positions
         hooksecurefunc(EditModeManagerFrame, "ExitEditMode", function()
-            HideAuraRowsPanel()
+            HideEnhancedCDMPanel()
             if ns.ScheduleLayout then ns.ScheduleLayout() end
         end)
     end)
 
     if not ok then
         editModeHooked = false
-        print("|cffff6600AuraRows:|r Edit Mode integration unavailable. Use /ar to configure.")
+        print("|cffff6600Enhanced CDM:|r Edit Mode integration unavailable. Use /ecdm to configure.")
     end
 end

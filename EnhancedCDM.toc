@@ -1,9 +1,9 @@
 ## Interface: 120000, 120001
-## Title: AuraRows
+## Title: Enhanced CDM
 ## Notes: Multi-row layout for the Cooldown Manager aura tracker
 ## Author: Sonterix
 ## Version: 0.3.0
-## SavedVariables: AuraRowsDB
+## SavedVariables: EnhancedCDMDB
 
 Config.lua
 Core.lua

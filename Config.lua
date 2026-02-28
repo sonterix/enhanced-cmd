@@ -1,4 +1,4 @@
--- AuraRows: Configuration — constants, defaults, display maps
+-- Enhanced CDM: Configuration — constants, defaults, display maps
 local _, ns = ...
 
 -- Default saved variable values

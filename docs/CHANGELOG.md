@@ -23,7 +23,7 @@
 
 ### Added
 - **Align setting** — Left, Center, or Right alignment for incomplete last rows
-- `/ar align <left|center|right>` slash command
+- `/ecdm align <left|center|right>` slash command
 - Align dropdown in Edit Mode panel
 
 ### Changed
@@ -35,7 +35,7 @@
 ### Technical
 - `DIRECTION_DISPLAY` and `ALIGN_DISPLAY` tables moved before slash commands for correct upvalue capture
 - Alignment offset computed per-row in `ApplyLayout()`, baked into `_arTargetX`
-- Dropdown widths set dynamically in `ShowAuraRowsPanel()` based on actual panel width
+- Dropdown widths set dynamically in `ShowEnhancedCDMPanel()` based on actual panel width
 
 ## [0.2.0] - 2026-02-27
 
@@ -46,15 +46,15 @@
 
 ### Technical
 - Replaced `EnterEditMode`/`ExitEditMode` hooks with `SelectSystem`/`ClearSelectedSystem`/`ExitEditMode`
-- Added `ShowAuraRowsPanel()` and `HideAuraRowsPanel()` helper functions
+- Added `ShowEnhancedCDMPanel()` and `HideEnhancedCDMPanel()` helper functions
 - Panel no longer movable/draggable — position is dynamic based on Blizzard dialog
 
 ## [0.1.0] - 2026-02-27
 
 ### Added
 - Multi-row grid layout for BuffIconCooldownViewer (Tracked Buffs)
-- Configurable icons per row (1–40) via `/ar rows <n>`
-- Growth direction (UP/DOWN) via `/ar grow <direction>`
+- Configurable icons per row (1–40) via `/ecdm rows <n>`
+- Growth direction (UP/DOWN) via `/ecdm grow <direction>`
 - Edit Mode floating settings panel with slider and toggle
 - Combat safety — defers layout during InCombatLockdown, flushes on PLAYER_REGEN_ENABLED
 - Debounced layout via `C_Timer.NewTimer(0, ...)` to run after Blizzard's layout pass

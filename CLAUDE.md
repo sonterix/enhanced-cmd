@@ -1,4 +1,4 @@
-# CLAUDE.md — AuraRows Developer Guide
+# CLAUDE.md — Enhanced CDM Developer Guide
 
 > **Keep this file lean.** Only rules, architecture, and pitfalls belong here — things Claude needs on every task.
 > For Blizzard API reference, see `docs/API_REFERENCE.md`.
@@ -6,24 +6,23 @@
 
 ## Project Overview
 
-**AuraRows** is a World of Warcraft addon (Midnight expansion, Interface 120000+) that repositions the Cooldown Manager's `BuffIconCooldownViewer` (Tracked Buffs) icons into a configurable multi-row grid. It hooks and repositions Blizzard's existing frames — it does **not** create its own icon frames.
+**Enhanced CDM** is a World of Warcraft addon (Midnight expansion, Interface 120000+) that repositions the Cooldown Manager's `BuffIconCooldownViewer` (Tracked Buffs) icons into a configurable multi-row grid. It hooks and repositions Blizzard's existing frames — it does **not** create its own icon frames.
 
 - **Author:** Sonterix
 - **Files:** `Config.lua`, `Core.lua`, `EditMode.lua`
 - **No external dependencies**
-- **SavedVariables:** `AuraRowsDB` (`maxPerRow`, `growDirection`, `align`)
+- **SavedVariables:** `EnhancedCDMDB` (`maxPerRow`, `growDirection`, `align`)
 
 ## File Structure
 
 ```
-AuraRows/
+EnhancedCDM/
   CLAUDE.md             ← This file (keep lean)
-  AuraRows.toc          ← Addon metadata, Interface version, SavedVariables
+  EnhancedCDM.toc       ← Addon metadata, Interface version, SavedVariables
   Config.lua            ← Constants, defaults, display maps
   Core.lua              ← Layout engine, hooks, init, slash commands, events
   EditMode.lua          ← Edit Mode settings panel
   docs/
-    README.md           ← User-facing docs + technical reference
     CHANGELOG.md        ← Version history (Keep A Changelog format)
     API_REFERENCE.md    ← Blizzard API details, deprecated templates, enums
     DEV_NOTES.md        ← Known bugs, addon conflicts, migration checklist
@@ -33,14 +32,14 @@ AuraRows/
 
 ### Namespace (`ns`)
 
-All files share a `ns` table via `local _, ns = ...`. No addon globals except `AuraRowsDB`.
+All files share a `ns` table via `local _, ns = ...`. No addon globals except `EnhancedCDMDB`.
 
 | Key | Set by | Used by | Description |
 |---|---|---|---|
 | `ns.DEFAULTS` | Config | Core | Default SavedVariable values |
 | `ns.DIRECTION_DISPLAY` | Config | Core, EditMode | `"DOWN"→"Down"` display map |
 | `ns.ALIGN_DISPLAY` | Config | Core, EditMode | `"LEFT"→"Left"` display map |
-| `ns.db` | Core | EditMode | Reference to `AuraRowsDB` |
+| `ns.db` | Core | EditMode | Reference to `EnhancedCDMDB` |
 | `ns.viewer` | Core | EditMode | Reference to `BuffIconCooldownViewer` |
 | `ns.ApplyLayout` | Core | EditMode | Layout function |
 | `ns.SetupEditMode` | EditMode | Core | Edit Mode hook installer |
@@ -51,7 +50,7 @@ All files share a `ns` table via `local _, ns = ...`. No addon globals except `A
 
 ```
 ADDON_LOADED (Core)
-  → merge ns.DEFAULTS into AuraRowsDB, set ns.db, register slash commands
+  → merge ns.DEFAULTS into EnhancedCDMDB, set ns.db, register slash commands
 PLAYER_ENTERING_WORLD (Core)
   → TryInit() polls for BuffIconCooldownViewer (up to 10s)
     → InstallHooks() + ns.SetupEditMode() + ApplyLayout()
@@ -72,7 +71,7 @@ PLAYER_ENTERING_WORLD (Core)
 
 - Pure Lua only — no XML frames
 - Local variables at file top; functions as `local function`
-- Cross-file sharing via `ns` only — never create addon globals besides `AuraRowsDB`
+- Cross-file sharing via `ns` only — never create addon globals besides `EnhancedCDMDB`
 - Only expose on `ns` what another file actually needs
 - WoW naming: PascalCase for frame methods, camelCase for local vars
 - Always use `hooksecurefunc` — never replace original Blizzard functions
@@ -85,12 +84,11 @@ Every new setting must touch **all** of these:
 2. Slash command handler in `Core.lua`
 3. `ApplyLayout()` in `Core.lua`
 4. Edit Mode panel in `EditMode.lua`
-5. Saved Variables table in `docs/README.md`
-6. Version bump in `AuraRows.toc` + entry in `docs/CHANGELOG.md`
+5. Version bump in `EnhancedCDM.toc` + entry in `docs/CHANGELOG.md`
 
 ### Versioning
 
-- Bump `## Version` in `AuraRows.toc` on every release
+- Bump `## Version` in `EnhancedCDM.toc` on every release
 - Add a `docs/CHANGELOG.md` entry following Keep A Changelog format
 
 ---
@@ -122,7 +120,7 @@ if ns.SetupEditMode then ns.SetupEditMode() end
 ```
 
 ### Secret Values (12.0)
-AuraRows is mostly low-risk (we only reposition frames). But:
+Enhanced CDM is mostly low-risk (we only reposition frames). But:
 - Do NOT read `cooldownID` values during restricted gameplay
 - `SetPoint` / `ClearAllPoints` remain usable on CDM children
 

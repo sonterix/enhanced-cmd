@@ -1,4 +1,4 @@
--- AuraRows: Core — layout engine, hooks, init, slash commands, events
+-- Enhanced CDM: Core — layout engine, hooks, init, slash commands, events
 local ADDON_NAME, ns = ...
 
 local db
@@ -251,7 +251,7 @@ local function InstallHooks()
 
     if not ok then
         hooksInstalled = false
-        print("|cffff6600AuraRows:|r Hook installation failed — layout disabled.")
+        print("|cffff6600Enhanced CDM:|r Hook installation failed — layout disabled.")
     end
 end
 
@@ -287,20 +287,20 @@ local function TryInit()
             if ns.SetupEditMode then ns.SetupEditMode() end
         elseif attempts >= 20 then
             ticker:Cancel()
-            print("|cffff6600AuraRows:|r BuffIconCooldownViewer not found. Is the Cooldown Manager enabled?")
+            print("|cffff6600Enhanced CDM:|r BuffIconCooldownViewer not found. Is the Cooldown Manager enabled?")
         end
     end)
 end
 
 -- ---------------------------------------------------------------------------
--- Slash commands — /aurarows or /ar
+-- Slash commands — /enhancedcdm or /ecdm
 -- ---------------------------------------------------------------------------
 
 local function RegisterSlashCommands()
-    SLASH_AURAROWS1 = "/aurarows"
-    SLASH_AURAROWS2 = "/ar"
+    SLASH_ENHANCEDCDM1 = "/enhancedcdm"
+    SLASH_ENHANCEDCDM2 = "/ecdm"
 
-    SlashCmdList["AURAROWS"] = function(msg)
+    SlashCmdList["ENHANCEDCDM"] = function(msg)
         local cmd, arg = msg:match("^(%S+)%s*(.*)")
         cmd = cmd and cmd:lower() or msg:lower()
 
@@ -308,37 +308,37 @@ local function RegisterSlashCommands()
             local n = tonumber(arg)
             if n and n >= 1 and n <= 40 then
                 db.maxPerRow = math.floor(n)
-                print("|cff00ccffAuraRows:|r Icons per row set to " .. db.maxPerRow)
+                print("|cff00ccffEnhanced CDM:|r Icons per row set to " .. db.maxPerRow)
                 ApplyLayout()
             else
-                print("|cff00ccffAuraRows:|r Usage: /ar rows <1-40>")
+                print("|cff00ccffEnhanced CDM:|r Usage: /ecdm rows <1-40>")
             end
         elseif cmd == "grow" or cmd == "direction" then
             local dir = arg:upper()
             if dir == "UP" or dir == "DOWN" then
                 db.growDirection = dir
-                print("|cff00ccffAuraRows:|r Growth set to " .. ns.DIRECTION_DISPLAY[dir])
+                print("|cff00ccffEnhanced CDM:|r Growth set to " .. ns.DIRECTION_DISPLAY[dir])
                 ApplyLayout()
             else
-                print("|cff00ccffAuraRows:|r Usage: /ar grow <up|down>")
+                print("|cff00ccffEnhanced CDM:|r Usage: /ecdm grow <up|down>")
             end
         elseif cmd == "align" then
             local a = arg:upper()
             if a == "LEFT" or a == "CENTER" or a == "RIGHT" then
                 db.align = a
-                print("|cff00ccffAuraRows:|r Alignment set to " .. ns.ALIGN_DISPLAY[a])
+                print("|cff00ccffEnhanced CDM:|r Alignment set to " .. ns.ALIGN_DISPLAY[a])
                 ApplyLayout()
             else
-                print("|cff00ccffAuraRows:|r Usage: /ar align <left|center|right>")
+                print("|cff00ccffEnhanced CDM:|r Usage: /ecdm align <left|center|right>")
             end
         else
-            print("|cff00ccffAuraRows|r v" .. (VERSION or "?"))
+            print("|cff00ccffEnhanced CDM|r v" .. (VERSION or "?"))
             local dirDisplay = ns.DIRECTION_DISPLAY[db.growDirection]
             local alignDisplay = ns.ALIGN_DISPLAY[db.align]
             print("  Current: " .. db.maxPerRow .. " per row, grow " .. dirDisplay .. ", align " .. alignDisplay)
-            print("  /ar rows <1-40>              - Icons per row")
-            print("  /ar grow <up|down>           - Row growth direction")
-            print("  /ar align <left|center|right> - Row alignment")
+            print("  /ecdm rows <1-40>              - Icons per row")
+            print("  /ecdm grow <up|down>           - Row growth direction")
+            print("  /ecdm align <left|center|right> - Row alignment")
         end
     end
 end
@@ -355,15 +355,15 @@ eventFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
 
 eventFrame:SetScript("OnEvent", function(_, event, arg1)
     if event == "ADDON_LOADED" and arg1 == ADDON_NAME then
-        if not AuraRowsDB then
-            AuraRowsDB = {}
+        if not EnhancedCDMDB then
+            EnhancedCDMDB = {}
         end
         for k, v in pairs(ns.DEFAULTS) do
-            if AuraRowsDB[k] == nil then
-                AuraRowsDB[k] = v
+            if EnhancedCDMDB[k] == nil then
+                EnhancedCDMDB[k] = v
             end
         end
-        db = AuraRowsDB
+        db = EnhancedCDMDB
         ns.db = db
         VERSION = C_AddOns.GetAddOnMetadata(ADDON_NAME, "Version")
         RegisterSlashCommands()
