@@ -50,7 +50,17 @@ local function ApplyLayout()
     local iconH = visibleBuf[1]:GetHeight() * scale
     if iconW < 1 then iconW = 36 end
     if iconH < 1 then iconH = 36 end
+    -- Read Blizzard's IconPadding so the CDM slider works; fall back to default
     local spacing = ns.ICON_SPACING
+    if viewer.GetSettingValue
+        and Enum.EditModeCooldownViewerSetting
+        and Enum.EditModeCooldownViewerSetting.IconPadding then
+        local ok, val = pcall(viewer.GetSettingValue, viewer,
+            Enum.EditModeCooldownViewerSetting.IconPadding)
+        if ok and type(val) == "number" then
+            spacing = val
+        end
+    end
 
     local totalIcons = n
     local numCols = math.min(maxPerRow, totalIcons)
@@ -104,6 +114,7 @@ end
 
 -- Expose for EditMode and slash commands
 ns.ApplyLayout = ApplyLayout
+ns.ScheduleLayout = ScheduleLayout
 
 -- ---------------------------------------------------------------------------
 -- Debounced scheduling
@@ -228,6 +239,7 @@ local function InstallHooks()
                 end
                 return origShouldShow(self, settingID)
             end
+            viewer._arShouldShowPatched = true
         end
 
         -- Prevent Blizzard from overriding our grid size on the viewer

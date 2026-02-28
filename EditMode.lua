@@ -196,8 +196,35 @@ function ns.SetupEditMode()
     local ok, err = pcall(function()
         -- Show panel only when Tracked Buffs (our viewer) is selected
         hooksecurefunc(EditModeManagerFrame, "SelectSystem", function(self, systemFrame)
-            if systemFrame == ns.viewer then
+            local buffViewer = _G["BuffIconCooldownViewer"]
+            if systemFrame == buffViewer then
+                -- Safety: apply ShouldShowSetting override if not yet patched
+                -- (covers timing gaps, viewer recreation, or mixin reapplication)
+                if not systemFrame._arShouldShowPatched then
+                    local origShouldShow = systemFrame.ShouldShowSetting
+                    if origShouldShow then
+                        systemFrame.ShouldShowSetting = function(s, settingID)
+                            if settingID == Enum.EditModeCooldownViewerSetting.IconDirection then
+                                return false
+                            end
+                            return origShouldShow(s, settingID)
+                        end
+                        systemFrame._arShouldShowPatched = true
+                        -- Hide the already-rendered IconDirection frame directly
+                        -- (avoids re-triggering UpdateSettings which can reset other settings)
+                        local dialog = _G["EditModeSystemSettingsDialog"]
+                        if dialog and dialog.Settings then
+                            for _, child in pairs({dialog.Settings:GetChildren()}) do
+                                if child.setting == Enum.EditModeCooldownViewerSetting.IconDirection then
+                                    child:Hide()
+                                    break
+                                end
+                            end
+                        end
+                    end
+                end
                 ShowAuraRowsPanel()
+                if ns.ScheduleLayout then ns.ScheduleLayout() end
             else
                 HideAuraRowsPanel()
             end
@@ -210,9 +237,11 @@ function ns.SetupEditMode()
             end)
         end
 
-        -- Safety: hide on Edit Mode exit
+        -- Safety: hide on Edit Mode exit and refresh layout so stale
+        -- cached positions don't persist after the transition
         hooksecurefunc(EditModeManagerFrame, "ExitEditMode", function()
             HideAuraRowsPanel()
+            if ns.ScheduleLayout then ns.ScheduleLayout() end
         end)
     end)
 
