@@ -1,11 +1,11 @@
 -- Enhanced CDM: Configuration — constants, defaults, display maps
-local _, ns = ...
+local _, ns          = ...
 
 -- Default saved variable values
-ns.DEFAULTS = {
-    maxPerRow     = 8,
+ns.DEFAULTS          = {
+    maxPerRow     = 6,
     growDirection = "DOWN",
-    align         = "LEFT",
+    align         = "CENTER",
 }
 
 -- Display text for UI labels
