@@ -156,14 +156,6 @@ local function HookFrame(frame)
         self._arSettingPos = false
     end)
 
-    -- Visibility changes (SetIsActive → SetShown) can flip icons without
-    -- triggering Layout() or SetCooldownID — catch those too.
-    hooksecurefunc(frame, "Show", function(self)
-        if self:GetParent() == viewer then ScheduleLayout() end
-    end)
-    hooksecurefunc(frame, "Hide", function(self)
-        if self:GetParent() == viewer then ScheduleLayout() end
-    end)
 end
 
 -- ---------------------------------------------------------------------------
@@ -223,22 +215,11 @@ local function InstallHooks()
     local ok, err = pcall(function()
         InstallMixinHooks()
 
-        -- Hide Blizzard's "Icon Direction" setting — our Align dropdown replaces it
-        local origShouldShow = viewer.ShouldShowSetting
-        if origShouldShow then
-            viewer.ShouldShowSetting = function(self, settingID)
-                if settingID == Enum.EditModeCooldownViewerSetting.IconDirection then
-                    return false
-                end
-                return origShouldShow(self, settingID)
-            end
-            viewer._arShouldShowPatched = true
-        end
-
-        -- Override Blizzard's C++ GridLayoutFrame engine with our grid layout
-        viewer.Layout = function(self)
+        -- Hook Blizzard's layout engine — let the original run untainted, then
+        -- schedule our grid repositioning for the next frame.
+        hooksecurefunc(viewer, "Layout", function()
             ScheduleLayout()
-        end
+        end)
 
         -- Hook all existing children
         local children = { viewer:GetChildren() }
