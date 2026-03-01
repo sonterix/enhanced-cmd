@@ -5,7 +5,7 @@ local editModePanel
 local editModeHooked = false
 
 -- ---------------------------------------------------------------------------
--- Panel creation — builds the settings panel (slider + 2 dropdowns)
+-- Panel creation — builds the settings panel (slider + 3 dropdowns)
 -- ---------------------------------------------------------------------------
 
 local function CreateEditModePanel()
@@ -126,12 +126,43 @@ local function CreateEditModePanel()
         end
     end)
 
+    -- Row 4: Layout Mode — [label] [dropdown]
+    local row4 = CreateFrame("Frame", nil, f)
+    row4:SetHeight(ROW_HEIGHT)
+    row4:SetPoint("TOPLEFT", row3, "BOTTOMLEFT", 0, 0)
+    row4:SetPoint("TOPRIGHT", row3, "BOTTOMRIGHT", 0, 0)
+
+    local layoutLabel = row4:CreateFontString(nil, "OVERLAY", "GameFontHighlightMedium")
+    layoutLabel:SetPoint("LEFT", 0, 0)
+    layoutLabel:SetWidth(LABEL_WIDTH)
+    layoutLabel:SetJustifyH("LEFT")
+    layoutLabel:SetText("Layout")
+
+    local layoutDropdown = CreateFrame("DropdownButton", "EnhancedCDMLayoutDropdown", row4, "WowStyle1DropdownTemplate")
+    layoutDropdown:SetPoint("LEFT", layoutLabel, "RIGHT", 5, 0)
+    layoutDropdown:SetPoint("RIGHT", row4, "RIGHT", 0, 0)
+    layoutDropdown:SetDefaultText(ns.LAYOUT_DISPLAY[db.layout])
+    layoutDropdown:SetupMenu(function(owner, rootDescription)
+        for _, l in ipairs({ "STATIC", "DYNAMIC" }) do
+            rootDescription:CreateRadio(
+                ns.LAYOUT_DISPLAY[l],
+                function() return ns.db.layout == l end,
+                function()
+                    ns.db.layout = l
+                    ns.ApplyLayout()
+                end,
+                l
+            )
+        end
+    end)
+
     f.perRowValue = perRowValue
     f.growDropdown = dropdown
     f.alignDropdown = alignDropdown
+    f.layoutDropdown = layoutDropdown
     editModePanel = f
 
-    f:SetSize(480, titleBottom + (ROW_HEIGHT * 3) + CONTENT_BOTTOM)
+    f:SetSize(480, titleBottom + (ROW_HEIGHT * 4) + CONTENT_BOTTOM)
 end
 
 -- ---------------------------------------------------------------------------
@@ -154,6 +185,9 @@ local function RefreshEditModePanel()
     end
     if editModePanel.alignDropdown then
         editModePanel.alignDropdown:SetDefaultText(ns.ALIGN_DISPLAY[db.align])
+    end
+    if editModePanel.layoutDropdown then
+        editModePanel.layoutDropdown:SetDefaultText(ns.LAYOUT_DISPLAY[db.layout])
     end
 end
 
