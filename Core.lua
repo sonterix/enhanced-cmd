@@ -23,13 +23,16 @@ local function ApplyLayout()
         return
     end
 
-    -- Collect visible icon children
+    -- Collect icon children based on layout mode
+    -- Static: all icons (preserves fixed grid positions even when hidden)
+    -- Dynamic: only visible icons (packs tightly, no gaps)
+    local isDynamic = (db.layout == "DYNAMIC")
     wipe(visibleBuf)
     local children = { viewer:GetChildren() }
     local n = 0
     for i = 1, #children do
         local child = children[i]
-        if child.cooldownID and child:IsShown() then
+        if child.cooldownID and (not isDynamic or child:IsShown()) then
             n = n + 1
             visibleBuf[n] = child
         end
@@ -312,14 +315,25 @@ local function RegisterSlashCommands()
             else
                 print("|cff00ccffEnhanced CDM:|r Usage: /ecdm align <left|center|right>")
             end
+        elseif cmd == "layout" then
+            local l = arg:upper()
+            if l == "STATIC" or l == "DYNAMIC" then
+                db.layout = l
+                print("|cff00ccffEnhanced CDM:|r Layout set to " .. ns.LAYOUT_DISPLAY[l])
+                ApplyLayout()
+            else
+                print("|cff00ccffEnhanced CDM:|r Usage: /ecdm layout <static|dynamic>")
+            end
         else
             print("|cff00ccffEnhanced CDM|r v" .. (VERSION or "?"))
             local dirDisplay = ns.DIRECTION_DISPLAY[db.growDirection]
             local alignDisplay = ns.ALIGN_DISPLAY[db.align]
-            print("  Current: " .. db.maxPerRow .. " per row, grow " .. dirDisplay .. ", align " .. alignDisplay)
-            print("  /ecdm rows <1-40>              - Icons per row")
-            print("  /ecdm grow <up|down>           - Row growth direction")
-            print("  /ecdm align <left|center|right> - Row alignment")
+            local layoutDisplay = ns.LAYOUT_DISPLAY[db.layout]
+            print("  Current: " .. db.maxPerRow .. " per row, grow " .. dirDisplay .. ", align " .. alignDisplay .. ", layout " .. layoutDisplay)
+            print("  /ecdm rows <1-40>               - Icons per row")
+            print("  /ecdm grow <up|down>             - Row growth direction")
+            print("  /ecdm align <left|center|right>  - Row alignment")
+            print("  /ecdm layout <static|dynamic>    - Layout mode")
         end
     end
 end
