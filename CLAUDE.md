@@ -1,8 +1,7 @@
 # CLAUDE.md — Enhanced CDM Developer Guide
 
-> **Keep this file lean.** Only rules, architecture, and pitfalls belong here — things Claude needs on every task.
+> **Keep this file lean.** Only rules, architecture, and pitfalls belong here
 > For Blizzard API reference, see `docs/API_REFERENCE.md`.
-> For known bugs, conflicts, and migration status, see `docs/DEV_NOTES.md`.
 
 ## Project Overview
 
@@ -25,7 +24,6 @@ EnhancedCDM/
   docs/
     CHANGELOG.md        ← Version history (Keep A Changelog format)
     API_REFERENCE.md    ← Blizzard API details, deprecated templates, enums
-    DEV_NOTES.md        ← Known bugs, addon conflicts, migration checklist
 ```
 
 ## Architecture
@@ -42,6 +40,8 @@ All files share a `ns` table via `local _, ns = ...`. No addon globals except `E
 | `ns.db` | Core | EditMode | Reference to `EnhancedCDMDB` |
 | `ns.viewer` | Core | EditMode | Reference to `BuffIconCooldownViewer` |
 | `ns.ApplyLayout` | Core | EditMode | Layout function |
+| `ns.ScheduleLayout` | Core | EditMode | Debounced layout trigger |
+| `ns.LAYOUT_DISPLAY` | Config | Core, EditMode | `"STATIC"→"Static"` display map |
 | `ns.SetupEditMode` | EditMode | Core | Edit Mode hook installer |
 
 **TOC load order:** `Config.lua` → `Core.lua` → `EditMode.lua`

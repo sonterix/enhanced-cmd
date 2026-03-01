@@ -22,7 +22,7 @@ local function CreateEditModePanel()
 
     local LABEL_WIDTH = 140
     local CONTENT_LEFT = 20
-    local CONTENT_TOP = 20
+    local CONTENT_TOP = 15
     local CONTENT_BOTTOM = 20
     local ROW_HEIGHT = 34
 
@@ -32,24 +32,54 @@ local function CreateEditModePanel()
 
     local titleBottom = CONTENT_TOP + title:GetStringHeight() + 10
 
-    -- Row 1: Icons Per Row — [label] [slider] [value]
+    -- Row 1: Layout Mode — [label] [dropdown]
     local row1 = CreateFrame("Frame", nil, f)
     row1:SetHeight(ROW_HEIGHT)
     row1:SetPoint("TOPLEFT", f, "TOPLEFT", CONTENT_LEFT, -titleBottom)
     row1:SetPoint("TOPRIGHT", f, "TOPRIGHT", -CONTENT_LEFT, -titleBottom)
 
-    local perRowLabel = row1:CreateFontString(nil, "OVERLAY", "GameFontHighlightMedium")
+    local layoutLabel = row1:CreateFontString(nil, "OVERLAY", "GameFontHighlightMedium")
+    layoutLabel:SetPoint("LEFT", 0, 0)
+    layoutLabel:SetWidth(LABEL_WIDTH)
+    layoutLabel:SetJustifyH("LEFT")
+    layoutLabel:SetText("Layout")
+
+    local layoutDropdown = CreateFrame("DropdownButton", "EnhancedCDMLayoutDropdown", row1, "WowStyle1DropdownTemplate")
+    layoutDropdown:SetPoint("LEFT", layoutLabel, "RIGHT", 5, 0)
+    layoutDropdown:SetPoint("RIGHT", row1, "RIGHT", 0, 0)
+    layoutDropdown:SetDefaultText(ns.LAYOUT_DISPLAY[db.layout])
+    layoutDropdown:SetupMenu(function(owner, rootDescription)
+        for _, l in ipairs({ "STATIC", "DYNAMIC" }) do
+            rootDescription:CreateRadio(
+                ns.LAYOUT_DISPLAY[l],
+                function() return ns.db.layout == l end,
+                function()
+                    ns.db.layout = l
+                    ns.ApplyLayout()
+                end,
+                l
+            )
+        end
+    end)
+
+    -- Row 2: Icons Per Row — [label] [slider] [value]
+    local row2 = CreateFrame("Frame", nil, f)
+    row2:SetHeight(ROW_HEIGHT)
+    row2:SetPoint("TOPLEFT", row1, "BOTTOMLEFT", 0, 0)
+    row2:SetPoint("TOPRIGHT", row1, "BOTTOMRIGHT", 0, 0)
+
+    local perRowLabel = row2:CreateFontString(nil, "OVERLAY", "GameFontHighlightMedium")
     perRowLabel:SetPoint("LEFT", 0, 0)
     perRowLabel:SetWidth(LABEL_WIDTH)
     perRowLabel:SetJustifyH("LEFT")
     perRowLabel:SetText("Icons Per Row")
 
-    local perRowValue = row1:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    local perRowValue = row2:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     perRowValue:SetPoint("RIGHT", 0, 0)
     perRowValue:SetJustifyH("RIGHT")
     perRowValue:SetText(tostring(db.maxPerRow))
 
-    local steppers = CreateFrame("Frame", "EnhancedCDMPerRowStepper", row1, "MinimalSliderWithSteppersTemplate")
+    local steppers = CreateFrame("Frame", "EnhancedCDMPerRowStepper", row2, "MinimalSliderWithSteppersTemplate")
     steppers:SetPoint("LEFT", perRowLabel, "RIGHT", 5, 0)
     steppers:SetPoint("RIGHT", perRowValue, "LEFT", -8, 0)
     steppers:SetHeight(17)
@@ -66,21 +96,21 @@ local function CreateEditModePanel()
         ns.ApplyLayout()
     end)
 
-    -- Row 2: Icons Growth Direction — [label] [dropdown]
-    local row2 = CreateFrame("Frame", nil, f)
-    row2:SetHeight(ROW_HEIGHT)
-    row2:SetPoint("TOPLEFT", row1, "BOTTOMLEFT", 0, 0)
-    row2:SetPoint("TOPRIGHT", row1, "BOTTOMRIGHT", 0, 0)
+    -- Row 3: Icons Growth Direction — [label] [dropdown]
+    local row3 = CreateFrame("Frame", nil, f)
+    row3:SetHeight(ROW_HEIGHT)
+    row3:SetPoint("TOPLEFT", row2, "BOTTOMLEFT", 0, 0)
+    row3:SetPoint("TOPRIGHT", row2, "BOTTOMRIGHT", 0, 0)
 
-    local growLabel = row2:CreateFontString(nil, "OVERLAY", "GameFontHighlightMedium")
+    local growLabel = row3:CreateFontString(nil, "OVERLAY", "GameFontHighlightMedium")
     growLabel:SetPoint("LEFT", 0, 0)
     growLabel:SetWidth(LABEL_WIDTH)
     growLabel:SetJustifyH("LEFT")
     growLabel:SetText("Icons Growth")
 
-    local dropdown = CreateFrame("DropdownButton", "EnhancedCDMGrowDropdown", row2, "WowStyle1DropdownTemplate")
+    local dropdown = CreateFrame("DropdownButton", "EnhancedCDMGrowDropdown", row3, "WowStyle1DropdownTemplate")
     dropdown:SetPoint("LEFT", growLabel, "RIGHT", 5, 0)
-    dropdown:SetPoint("RIGHT", row2, "RIGHT", 0, 0)
+    dropdown:SetPoint("RIGHT", row3, "RIGHT", 0, 0)
     dropdown:SetDefaultText(ns.DIRECTION_DISPLAY[db.growDirection])
     dropdown:SetupMenu(function(owner, rootDescription)
         for _, dir in ipairs({ "DOWN", "UP" }) do
@@ -96,21 +126,21 @@ local function CreateEditModePanel()
         end
     end)
 
-    -- Row 3: Icons Alignment — [label] [dropdown]
-    local row3 = CreateFrame("Frame", nil, f)
-    row3:SetHeight(ROW_HEIGHT)
-    row3:SetPoint("TOPLEFT", row2, "BOTTOMLEFT", 0, 0)
-    row3:SetPoint("TOPRIGHT", row2, "BOTTOMRIGHT", 0, 0)
+    -- Row 4: Icons Alignment — [label] [dropdown]
+    local row4 = CreateFrame("Frame", nil, f)
+    row4:SetHeight(ROW_HEIGHT)
+    row4:SetPoint("TOPLEFT", row3, "BOTTOMLEFT", 0, 0)
+    row4:SetPoint("TOPRIGHT", row3, "BOTTOMRIGHT", 0, 0)
 
-    local alignLabel = row3:CreateFontString(nil, "OVERLAY", "GameFontHighlightMedium")
+    local alignLabel = row4:CreateFontString(nil, "OVERLAY", "GameFontHighlightMedium")
     alignLabel:SetPoint("LEFT", 0, 0)
     alignLabel:SetWidth(LABEL_WIDTH)
     alignLabel:SetJustifyH("LEFT")
     alignLabel:SetText("Icons Alignment")
 
-    local alignDropdown = CreateFrame("DropdownButton", "EnhancedCDMAlignDropdown", row3, "WowStyle1DropdownTemplate")
+    local alignDropdown = CreateFrame("DropdownButton", "EnhancedCDMAlignDropdown", row4, "WowStyle1DropdownTemplate")
     alignDropdown:SetPoint("LEFT", alignLabel, "RIGHT", 5, 0)
-    alignDropdown:SetPoint("RIGHT", row3, "RIGHT", 0, 0)
+    alignDropdown:SetPoint("RIGHT", row4, "RIGHT", 0, 0)
     alignDropdown:SetDefaultText(ns.ALIGN_DISPLAY[db.align])
     alignDropdown:SetupMenu(function(owner, rootDescription)
         for _, a in ipairs({ "LEFT", "CENTER", "RIGHT" }) do
@@ -122,36 +152,6 @@ local function CreateEditModePanel()
                     ns.ApplyLayout()
                 end,
                 a
-            )
-        end
-    end)
-
-    -- Row 4: Layout Mode — [label] [dropdown]
-    local row4 = CreateFrame("Frame", nil, f)
-    row4:SetHeight(ROW_HEIGHT)
-    row4:SetPoint("TOPLEFT", row3, "BOTTOMLEFT", 0, 0)
-    row4:SetPoint("TOPRIGHT", row3, "BOTTOMRIGHT", 0, 0)
-
-    local layoutLabel = row4:CreateFontString(nil, "OVERLAY", "GameFontHighlightMedium")
-    layoutLabel:SetPoint("LEFT", 0, 0)
-    layoutLabel:SetWidth(LABEL_WIDTH)
-    layoutLabel:SetJustifyH("LEFT")
-    layoutLabel:SetText("Layout")
-
-    local layoutDropdown = CreateFrame("DropdownButton", "EnhancedCDMLayoutDropdown", row4, "WowStyle1DropdownTemplate")
-    layoutDropdown:SetPoint("LEFT", layoutLabel, "RIGHT", 5, 0)
-    layoutDropdown:SetPoint("RIGHT", row4, "RIGHT", 0, 0)
-    layoutDropdown:SetDefaultText(ns.LAYOUT_DISPLAY[db.layout])
-    layoutDropdown:SetupMenu(function(owner, rootDescription)
-        for _, l in ipairs({ "STATIC", "DYNAMIC" }) do
-            rootDescription:CreateRadio(
-                ns.LAYOUT_DISPLAY[l],
-                function() return ns.db.layout == l end,
-                function()
-                    ns.db.layout = l
-                    ns.ApplyLayout()
-                end,
-                l
             )
         end
     end)
@@ -191,7 +191,7 @@ local function RefreshEditModePanel()
     end
 end
 
--- Anchors panel below Blizzard's settings dialog and shows it
+-- Anchors panel to the left of Blizzard's settings dialog and shows it
 local function ShowEnhancedCDMPanel()
     CreateEditModePanel()
     RefreshEditModePanel()
@@ -199,9 +199,10 @@ local function ShowEnhancedCDMPanel()
     local blizzDialog = _G["EditModeSystemSettingsDialog"]
     local viewer = ns.viewer
     if blizzDialog and blizzDialog:IsShown() then
+        editModePanel:SetFrameLevel(blizzDialog:GetFrameLevel())
         editModePanel:SetWidth(blizzDialog:GetWidth())
         editModePanel:ClearAllPoints()
-        editModePanel:SetPoint("TOP", blizzDialog, "BOTTOM", 0, -4)
+        editModePanel:SetPoint("TOPRIGHT", blizzDialog, "TOPLEFT", -4, 0)
     elseif viewer then
         editModePanel:ClearAllPoints()
         editModePanel:SetPoint("BOTTOM", viewer, "TOP", 0, 8)
@@ -250,6 +251,21 @@ function ns.SetupEditMode()
             HideEnhancedCDMPanel()
             if ns.ScheduleLayout then ns.ScheduleLayout() end
         end)
+
+        -- Hide the "Icon Direction" setting from Blizzard's dialog for our viewer
+        local dialog = _G["EditModeSystemSettingsDialog"]
+        if dialog and dialog.UpdateSettings then
+            hooksecurefunc(dialog, "UpdateSettings", function(self)
+                if self.attachedToSystem ~= _G["BuffIconCooldownViewer"] then return end
+                local children = { self.Settings:GetChildren() }
+                for _, child in ipairs(children) do
+                    if child.setting == Enum.EditModeCooldownViewerSetting.IconDirection then
+                        child:Hide()
+                    end
+                end
+                self.Settings:Layout()
+            end)
+        end
     end)
 
     if not ok then
