@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.4.0] - 2026-03-01
+
+### Added
+- **Layout mode setting** — Static or Dynamic layout via dropdown, slash command, and Edit Mode panel
+  - **Static** (default): Icons keep their pre-configured grid positions; inactive icons leave gaps
+  - **Dynamic**: Active icons pack tightly with no gaps, re-aligned per alignment setting
+- `/ecdm layout <static|dynamic>` slash command
+- Layout dropdown in Edit Mode panel
+
 ## [0.3.0] - 2026-02-28
 
 ### Fixed

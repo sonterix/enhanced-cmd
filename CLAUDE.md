@@ -11,7 +11,7 @@
 - **Author:** Sonterix
 - **Files:** `Config.lua`, `Core.lua`, `EditMode.lua`
 - **No external dependencies**
-- **SavedVariables:** `EnhancedCDMDB` (`maxPerRow`, `growDirection`, `align`)
+- **SavedVariables:** `EnhancedCDMDB` (`maxPerRow`, `growDirection`, `align`, `layout`)
 
 ## File Structure
 
