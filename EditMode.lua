@@ -13,48 +13,48 @@ local function CreateEditModePanel()
 
     local db = ns.db
 
-    local f = CreateFrame("Frame", "EnhancedCDMEditModePanel", UIParent, "BackdropTemplate")
+    local f = CreateFrame("Frame", "EnhancedCDMEditModePanel", UIParent)
     f:EnableMouse(true)
     f:SetFrameStrata("DIALOG")
-    f:SetBackdrop({
-        bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
-        edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
-        tile = true,
-        tileSize = 32,
-        edgeSize = 16,
-        insets = { left = 4, right = 4, top = 4, bottom = 4 },
-    })
+    local border = CreateFrame("Frame", nil, f, "DialogBorderTranslucentTemplate")
+    border:SetAllPoints(f)
     f:Hide()
 
-    local LABEL_WIDTH = 120
-    local CONTENT_LEFT = 15
-    local ROW_HEIGHT = 32
+    local LABEL_WIDTH = 140
+    local CONTENT_LEFT = 20
+    local CONTENT_TOP = 20
+    local CONTENT_BOTTOM = 20
+    local ROW_HEIGHT = 34
 
     local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-    title:SetPoint("TOP", 0, -12)
+    title:SetPoint("TOP", 0, -CONTENT_TOP)
     title:SetText("Enhanced CDM")
 
-    -- Row 1: Per Row — [label] [slider] [value]
+    local titleBottom = CONTENT_TOP + title:GetStringHeight() + 10
+
+    -- Row 1: Icons Per Row — [label] [slider] [value]
     local row1 = CreateFrame("Frame", nil, f)
     row1:SetHeight(ROW_HEIGHT)
-    row1:SetPoint("TOPLEFT", f, "TOPLEFT", CONTENT_LEFT, -42)
-    row1:SetPoint("TOPRIGHT", f, "TOPRIGHT", -CONTENT_LEFT, -42)
+    row1:SetPoint("TOPLEFT", f, "TOPLEFT", CONTENT_LEFT, -titleBottom)
+    row1:SetPoint("TOPRIGHT", f, "TOPRIGHT", -CONTENT_LEFT, -titleBottom)
 
     local perRowLabel = row1:CreateFontString(nil, "OVERLAY", "GameFontHighlightMedium")
     perRowLabel:SetPoint("LEFT", 0, 0)
     perRowLabel:SetWidth(LABEL_WIDTH)
     perRowLabel:SetJustifyH("LEFT")
-    perRowLabel:SetText("Per Row")
+    perRowLabel:SetText("Icons Per Row")
 
-    local perRowValue = row1:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    local perRowValue = row1:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     perRowValue:SetPoint("RIGHT", 0, 0)
     perRowValue:SetJustifyH("RIGHT")
     perRowValue:SetText(tostring(db.maxPerRow))
 
-    local slider = CreateFrame("Slider", "EnhancedCDMPerRowSlider", row1, "MinimalSliderTemplate")
-    slider:SetPoint("LEFT", perRowLabel, "RIGHT", 5, 0)
-    slider:SetPoint("RIGHT", perRowValue, "LEFT", -8, 0)
-    slider:SetHeight(17)
+    local steppers = CreateFrame("Frame", "EnhancedCDMPerRowStepper", row1, "MinimalSliderWithSteppersTemplate")
+    steppers:SetPoint("LEFT", perRowLabel, "RIGHT", 5, 0)
+    steppers:SetPoint("RIGHT", perRowValue, "LEFT", -8, 0)
+    steppers:SetHeight(17)
+
+    local slider = steppers.Slider
     slider:SetMinMaxValues(1, 40)
     slider:SetValueStep(1)
     slider:SetObeyStepOnDrag(true)
@@ -66,7 +66,7 @@ local function CreateEditModePanel()
         ns.ApplyLayout()
     end)
 
-    -- Row 2: Growth Direction — [label] [dropdown]
+    -- Row 2: Icons Growth Direction — [label] [dropdown]
     local row2 = CreateFrame("Frame", nil, f)
     row2:SetHeight(ROW_HEIGHT)
     row2:SetPoint("TOPLEFT", row1, "BOTTOMLEFT", 0, 0)
@@ -76,10 +76,11 @@ local function CreateEditModePanel()
     growLabel:SetPoint("LEFT", 0, 0)
     growLabel:SetWidth(LABEL_WIDTH)
     growLabel:SetJustifyH("LEFT")
-    growLabel:SetText("Growth")
+    growLabel:SetText("Icons Growth")
 
     local dropdown = CreateFrame("DropdownButton", "EnhancedCDMGrowDropdown", row2, "WowStyle1DropdownTemplate")
     dropdown:SetPoint("LEFT", growLabel, "RIGHT", 5, 0)
+    dropdown:SetPoint("RIGHT", row2, "RIGHT", 0, 0)
     dropdown:SetDefaultText(ns.DIRECTION_DISPLAY[db.growDirection])
     dropdown:SetupMenu(function(owner, rootDescription)
         for _, dir in ipairs({ "DOWN", "UP" }) do
@@ -95,7 +96,7 @@ local function CreateEditModePanel()
         end
     end)
 
-    -- Row 3: Align — [label] [dropdown]
+    -- Row 3: Icons Alignment — [label] [dropdown]
     local row3 = CreateFrame("Frame", nil, f)
     row3:SetHeight(ROW_HEIGHT)
     row3:SetPoint("TOPLEFT", row2, "BOTTOMLEFT", 0, 0)
@@ -105,10 +106,11 @@ local function CreateEditModePanel()
     alignLabel:SetPoint("LEFT", 0, 0)
     alignLabel:SetWidth(LABEL_WIDTH)
     alignLabel:SetJustifyH("LEFT")
-    alignLabel:SetText("Align")
+    alignLabel:SetText("Icons Alignment")
 
     local alignDropdown = CreateFrame("DropdownButton", "EnhancedCDMAlignDropdown", row3, "WowStyle1DropdownTemplate")
     alignDropdown:SetPoint("LEFT", alignLabel, "RIGHT", 5, 0)
+    alignDropdown:SetPoint("RIGHT", row3, "RIGHT", 0, 0)
     alignDropdown:SetDefaultText(ns.ALIGN_DISPLAY[db.align])
     alignDropdown:SetupMenu(function(owner, rootDescription)
         for _, a in ipairs({ "LEFT", "CENTER", "RIGHT" }) do
@@ -129,7 +131,7 @@ local function CreateEditModePanel()
     f.alignDropdown = alignDropdown
     editModePanel = f
 
-    f:SetSize(480, 160)
+    f:SetSize(480, titleBottom + (ROW_HEIGHT * 3) + CONTENT_BOTTOM)
 end
 
 -- ---------------------------------------------------------------------------
@@ -140,9 +142,9 @@ end
 local function RefreshEditModePanel()
     if not editModePanel then return end
     local db = ns.db
-    local slider = _G["EnhancedCDMPerRowSlider"]
-    if slider then
-        slider:SetValue(db.maxPerRow)
+    local steppers = _G["EnhancedCDMPerRowStepper"]
+    if steppers and steppers.Slider then
+        steppers.Slider:SetValue(db.maxPerRow)
     end
     if editModePanel.perRowValue then
         editModePanel.perRowValue:SetText(tostring(db.maxPerRow))
