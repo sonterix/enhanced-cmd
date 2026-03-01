@@ -4,7 +4,6 @@ local ADDON_NAME, ns = ...
 local db
 local viewer
 local hookedFrames = {}
-local pendingLayout = false
 local mixinHooksInstalled = false
 local hooksInstalled = false
 local layoutTimer = nil
@@ -15,13 +14,10 @@ local VERSION
 -- ---------------------------------------------------------------------------
 
 local visibleBuf = {}
+local HookFrame  -- forward declaration; defined after ScheduleLayout
 
 local function ApplyLayout()
     if not viewer then return end
-    if InCombatLockdown() then
-        pendingLayout = true
-        return
-    end
 
     -- Collect icon children based on layout mode
     -- Static: all icons (preserves fixed grid positions even when hidden)
@@ -30,11 +26,16 @@ local function ApplyLayout()
     wipe(visibleBuf)
     local children = { viewer:GetChildren() }
     local n = 0
+    local withCooldownID = 0
     for i = 1, #children do
         local child = children[i]
-        if child.cooldownID and (not isDynamic or child:IsShown()) then
-            n = n + 1
-            visibleBuf[n] = child
+        HookFrame(child)  -- idempotent; catches frames created after init
+        if child.cooldownID then
+            withCooldownID = withCooldownID + 1
+            if not isDynamic or child:IsShown() then
+                n = n + 1
+                visibleBuf[n] = child
+            end
         end
     end
 
@@ -69,9 +70,12 @@ local function ApplyLayout()
     end
 
     local totalIcons = n
-    local numCols = math.min(maxPerRow, totalIcons)
     local numRows = math.ceil(totalIcons / maxPerRow)
-    local fullRowWidth = numCols * (iconW + spacing) - spacing
+    -- Keep viewer at full maxPerRow width so the container stays fixed
+    -- regardless of how many icons are currently visible
+    local refCols = maxPerRow
+    local refRows = isDynamic and math.max(numRows, math.ceil(withCooldownID / maxPerRow)) or numRows
+    local fullRowWidth = refCols * (iconW + spacing) - spacing
 
     -- Position each icon in the grid
     for i = 1, n do
@@ -80,7 +84,7 @@ local function ApplyLayout()
         local col = idx % maxPerRow
         local row = math.floor(idx / maxPerRow)
 
-        -- Shift incomplete last rows for center/right alignment
+        -- Shift incomplete rows for center/right alignment
         local alignOffset = 0
         if align ~= "LEFT" then
             local rowStart = row * maxPerRow
@@ -111,8 +115,8 @@ local function ApplyLayout()
 
     -- Viewer size is in the viewer's own coordinate space (not child-scaled),
     -- so scale up the unscaled grid dimensions.
-    local totalW = (numCols * (iconW + spacing) - spacing) * scale
-    local totalH = (numRows * (iconH + spacing) - spacing) * scale
+    local totalW = (refCols * (iconW + spacing) - spacing) * scale
+    local totalH = (refRows * (iconH + spacing) - spacing) * scale
     if totalW > 0 and totalH > 0 then
         viewer:SetSize(totalW, totalH)
     end
@@ -138,11 +142,12 @@ ns.ScheduleLayout = ScheduleLayout
 -- Per-frame hook — overrides Blizzard's SetPoint and relayouts on show/hide
 -- ---------------------------------------------------------------------------
 
-local function HookFrame(frame)
+HookFrame = function(frame)
     if hookedFrames[frame] then return end
     hookedFrames[frame] = true
 
     -- Intercept Blizzard repositioning and enforce our cached grid position
+    -- CDM children are not protected — SetPoint is safe during combat
     hooksecurefunc(frame, "SetPoint", function(self)
         if self._arSettingPos then return end
         if not self._arTargetX then return end
@@ -157,6 +162,18 @@ local function HookFrame(frame)
             self:SetPoint("BOTTOMLEFT", viewer, "BOTTOMLEFT", self._arTargetX, self._arTargetY)
         end
         self._arSettingPos = false
+    end)
+
+    -- Show/hide changes visible count in dynamic mode — relayout needed
+    -- Use HookScript (fires on any visibility change) not hooksecurefunc
+    -- (only fires on explicit Lua Show/Hide calls)
+    frame:HookScript("OnShow", function(self)
+        if self:GetParent() ~= viewer then return end
+        ScheduleLayout()
+    end)
+    frame:HookScript("OnHide", function(self)
+        if self:GetParent() ~= viewer then return end
+        ScheduleLayout()
     end)
 
 end
@@ -339,14 +356,12 @@ local function RegisterSlashCommands()
 end
 
 -- ---------------------------------------------------------------------------
--- Events — ADDON_LOADED (init DB), PLAYER_ENTERING_WORLD (find viewer),
---          PLAYER_REGEN_ENABLED (flush deferred layout after combat)
+-- Events — ADDON_LOADED (init DB), PLAYER_ENTERING_WORLD (find viewer)
 -- ---------------------------------------------------------------------------
 
 local eventFrame = CreateFrame("Frame")
 eventFrame:RegisterEvent("ADDON_LOADED")
 eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
-eventFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
 
 eventFrame:SetScript("OnEvent", function(_, event, arg1)
     if event == "ADDON_LOADED" and arg1 == ADDON_NAME then
@@ -364,10 +379,5 @@ eventFrame:SetScript("OnEvent", function(_, event, arg1)
         RegisterSlashCommands()
     elseif event == "PLAYER_ENTERING_WORLD" then
         TryInit()
-    elseif event == "PLAYER_REGEN_ENABLED" then
-        if pendingLayout then
-            pendingLayout = false
-            ApplyLayout()
-        end
     end
 end)

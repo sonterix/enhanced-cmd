@@ -61,7 +61,7 @@ PLAYER_ENTERING_WORLD (Core)
 - **`ApplyLayout()`** — iterates visible icon children, positions them in a grid. Debounced via `ScheduleLayout()` → `C_Timer.NewTimer(0, ...)`.
 - **SetPoint hook** — each icon gets `hooksecurefunc("SetPoint", ...)` overriding Blizzard's positioning with cached `_arTargetX` / `_arTargetY`. Guard flag `_arSettingPos` prevents recursion.
 - **Edit Mode panel** — hooks `EditModeManagerFrame:SelectSystem`. Panel anchors below `EditModeSystemSettingsDialog`.
-- **Combat safety** — `ApplyLayout()` checks `InCombatLockdown()` and defers; `PLAYER_REGEN_ENABLED` flushes pending layout.
+- **Combat safety** — CDM icon children are not protected frames; `SetPoint` / `ClearAllPoints` are safe during combat. `ApplyLayout()` runs unconditionally so dynamic layout can reflow mid-fight.
 
 ---
 
@@ -102,7 +102,7 @@ Always set `frame._arSettingPos = true` before calling `SetPoint` from our code,
 `CooldownViewerItemDataMixin` hooks fire for **all** CooldownViewer instances (spell cooldowns too). Always guard with `GetParent() == viewer`.
 
 ### Combat Lockdown
-Never call `SetPoint` on frames during `InCombatLockdown()`. Treat CDM children as protected for safety.
+CDM icon children are **not** protected frames — `SetPoint` / `ClearAllPoints` work during `InCombatLockdown()`. Dynamic layout relies on this to reflow the grid when buffs appear or expire mid-combat. Do **not** gate `ApplyLayout()` behind a combat check.
 
 ### Debounce Timing
 Use `C_Timer.NewTimer(0, ...)` for debounced layout — not `C_Timer.After(0)`. They are not interchangeable.
