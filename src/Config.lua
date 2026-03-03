@@ -11,6 +11,12 @@ ns.DEFAULTS          = {
     bars_layout      = "STATIC",
     bars_align       = "CENTER",
     bars_maxPerRow   = 2,
+    essential_hotkeys_show     = false,
+    essential_hotkeys_position = "TOPLEFT",
+    essential_hotkeys_fontSize = 14,
+    utility_hotkeys_show       = false,
+    utility_hotkeys_position   = "TOPLEFT",
+    utility_hotkeys_fontSize   = 12,
 }
 
 -- Display text for UI labels
@@ -20,3 +26,29 @@ ns.LAYOUT_DISPLAY      = { STATIC = "Static", DYNAMIC = "Dynamic" }
 ns.ORIENTATION_DISPLAY = { VERTICAL = "Vertical", HORIZONTAL = "Horizontal" }
 ns.BAR_ALIGN_V_DISPLAY = { DOWN = "Down", UP = "Up" }
 ns.BAR_ALIGN_H_DISPLAY = { LEFT = "Left", CENTER = "Center", RIGHT = "Right" }
+
+ns.HOTKEY_POSITION_DISPLAY = {
+    TOPLEFT = "Top Left", TOP = "Top", TOPRIGHT = "Top Right",
+    RIGHT = "Right", BOTTOMRIGHT = "Bottom Right", BOTTOM = "Bottom",
+    BOTTOMLEFT = "Bottom Left", LEFT = "Left", CENTER = "Center",
+}
+
+-- Anchor point + offsets for each hotkey position
+ns.HOTKEY_POSITION_ANCHORS = {
+    TOPLEFT     = { point = "TOPLEFT",     x =  2, y = -2 },
+    TOP         = { point = "TOP",         x =  0, y = -2 },
+    TOPRIGHT    = { point = "TOPRIGHT",    x = -2, y = -2 },
+    RIGHT       = { point = "RIGHT",       x = -2, y =  0 },
+    BOTTOMRIGHT = { point = "BOTTOMRIGHT", x = -2, y =  2 },
+    BOTTOM      = { point = "BOTTOM",      x =  0, y =  2 },
+    BOTTOMLEFT  = { point = "BOTTOMLEFT",  x =  2, y =  2 },
+    LEFT        = { point = "LEFT",        x =  2, y =  0 },
+    CENTER      = { point = "CENTER",      x =  0, y =  0 },
+}
+
+-- Horizontal text alignment per position
+ns.HOTKEY_POSITION_JUSTIFY = {
+    TOPLEFT = "LEFT", TOP = "CENTER", TOPRIGHT = "RIGHT",
+    LEFT = "LEFT", CENTER = "CENTER", RIGHT = "RIGHT",
+    BOTTOMLEFT = "LEFT", BOTTOM = "CENTER", BOTTOMRIGHT = "RIGHT",
+}

@@ -3,7 +3,16 @@ local _, ns = ...
 
 local editModePanel
 local barsEditModePanel
+local essentialHotkeysPanel
+local utilityHotkeysPanel
 local editModeHooked = false
+
+-- Layout constants shared by all panels
+local LABEL_WIDTH    = 140
+local CONTENT_LEFT   = 20
+local CONTENT_TOP    = 15
+local CONTENT_BOTTOM = 20
+local ROW_HEIGHT     = 34
 
 -- ---------------------------------------------------------------------------
 -- Panel creation — builds the settings panel (slider + 3 dropdowns)
@@ -20,12 +29,6 @@ local function CreateEditModePanel()
     local border = CreateFrame("Frame", nil, f, "DialogBorderTranslucentTemplate")
     border:SetAllPoints(f)
     f:Hide()
-
-    local LABEL_WIDTH = 140
-    local CONTENT_LEFT = 20
-    local CONTENT_TOP = 15
-    local CONTENT_BOTTOM = 20
-    local ROW_HEIGHT = 34
 
     local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     title:SetPoint("TOP", 0, -CONTENT_TOP)
@@ -192,26 +195,28 @@ local function RefreshEditModePanel()
     end
 end
 
--- Anchors panel to the left of Blizzard's settings dialog and shows it
+-- Anchors a panel to the left of Blizzard's settings dialog, or falls back
+-- to the viewer / screen top. Shared by all four Show* functions.
+local function AnchorPanelToDialog(panel, fallbackViewer)
+    local blizzDialog = _G["EditModeSystemSettingsDialog"]
+    if blizzDialog and blizzDialog:IsShown() then
+        panel:SetFrameLevel(blizzDialog:GetFrameLevel())
+        panel:SetWidth(blizzDialog:GetWidth())
+        panel:ClearAllPoints()
+        panel:SetPoint("TOPRIGHT", blizzDialog, "TOPLEFT", -4, 0)
+    elseif fallbackViewer then
+        panel:ClearAllPoints()
+        panel:SetPoint("BOTTOM", fallbackViewer, "TOP", 0, 8)
+    else
+        panel:ClearAllPoints()
+        panel:SetPoint("TOP", UIParent, "TOP", 0, -100)
+    end
+end
+
 local function ShowEnhancedCDMPanel()
     CreateEditModePanel()
     RefreshEditModePanel()
-
-    local blizzDialog = _G["EditModeSystemSettingsDialog"]
-    local viewer = ns.viewer
-    if blizzDialog and blizzDialog:IsShown() then
-        editModePanel:SetFrameLevel(blizzDialog:GetFrameLevel())
-        editModePanel:SetWidth(blizzDialog:GetWidth())
-        editModePanel:ClearAllPoints()
-        editModePanel:SetPoint("TOPRIGHT", blizzDialog, "TOPLEFT", -4, 0)
-    elseif viewer then
-        editModePanel:ClearAllPoints()
-        editModePanel:SetPoint("BOTTOM", viewer, "TOP", 0, 8)
-    else
-        editModePanel:ClearAllPoints()
-        editModePanel:SetPoint("TOP", UIParent, "TOP", 0, -100)
-    end
-
+    AnchorPanelToDialog(editModePanel, ns.viewer)
     editModePanel:Show()
 end
 
@@ -237,12 +242,6 @@ local function CreateBarsEditModePanel()
     border:SetAllPoints(f)
     f:SetWidth(480)
     f:Hide()
-
-    local LABEL_WIDTH = 140
-    local CONTENT_LEFT = 20
-    local CONTENT_TOP = 15
-    local CONTENT_BOTTOM = 20
-    local ROW_HEIGHT = 34
 
     local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     title:SetPoint("TOP", 0, -CONTENT_TOP)
@@ -463,22 +462,7 @@ local function ShowBarsPanel()
     if barsEditModePanel.UpdateBarsPanel then
         barsEditModePanel.UpdateBarsPanel()
     end
-
-    local blizzDialog = _G["EditModeSystemSettingsDialog"]
-    local bViewer = ns.barViewer
-    if blizzDialog and blizzDialog:IsShown() then
-        barsEditModePanel:SetFrameLevel(blizzDialog:GetFrameLevel())
-        barsEditModePanel:SetWidth(blizzDialog:GetWidth())
-        barsEditModePanel:ClearAllPoints()
-        barsEditModePanel:SetPoint("TOPRIGHT", blizzDialog, "TOPLEFT", -4, 0)
-    elseif bViewer then
-        barsEditModePanel:ClearAllPoints()
-        barsEditModePanel:SetPoint("BOTTOM", bViewer, "TOP", 0, 8)
-    else
-        barsEditModePanel:ClearAllPoints()
-        barsEditModePanel:SetPoint("TOP", UIParent, "TOP", 0, -100)
-    end
-
+    AnchorPanelToDialog(barsEditModePanel, ns.barViewer)
     barsEditModePanel:Show()
 end
 
@@ -489,43 +473,236 @@ local function HideBarsPanel()
 end
 
 -- ---------------------------------------------------------------------------
+-- Hotkeys panel factory — creates a checkbox + position + font size panel
+-- ---------------------------------------------------------------------------
+
+local POSITION_ORDER = { "TOPLEFT", "TOP", "TOPRIGHT", "RIGHT", "BOTTOMRIGHT", "BOTTOM", "BOTTOMLEFT", "LEFT", "CENTER" }
+
+local function CreateHotkeysPanelForViewer(frameName, titleText, prefix)
+    local db = ns.db
+
+    local f = CreateFrame("Frame", frameName, UIParent)
+    f:EnableMouse(true)
+    f:SetFrameStrata("DIALOG")
+    local border = CreateFrame("Frame", nil, f, "DialogBorderTranslucentTemplate")
+    border:SetAllPoints(f)
+    f:SetWidth(480)
+    f:Hide()
+
+    local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    title:SetPoint("TOP", 0, -CONTENT_TOP)
+    title:SetText(titleText)
+
+    local titleBottom = CONTENT_TOP + title:GetStringHeight() + 10
+
+    -- Row 1: Show Keybinds checkbox
+    local row1 = CreateFrame("Frame", nil, f)
+    row1:SetHeight(ROW_HEIGHT)
+    row1:SetPoint("TOPLEFT", f, "TOPLEFT", CONTENT_LEFT, -titleBottom)
+    row1:SetPoint("TOPRIGHT", f, "TOPRIGHT", -CONTENT_LEFT, -titleBottom)
+
+    local showLabel = row1:CreateFontString(nil, "OVERLAY", "GameFontHighlightMedium")
+    showLabel:SetPoint("LEFT", 0, 0)
+    showLabel:SetWidth(LABEL_WIDTH)
+    showLabel:SetJustifyH("LEFT")
+    showLabel:SetText("Show Keybinds")
+
+    local checkbox = CreateFrame("CheckButton", frameName .. "Checkbox", row1, "UICheckButtonTemplate")
+    checkbox:SetPoint("LEFT", showLabel, "RIGHT", 5, 0)
+    checkbox:SetSize(26, 26)
+
+    -- Row 2: Position — conditional: visible when show=true
+    local row2 = CreateFrame("Frame", nil, f)
+    row2:SetHeight(ROW_HEIGHT)
+
+    local posLabel = row2:CreateFontString(nil, "OVERLAY", "GameFontHighlightMedium")
+    posLabel:SetPoint("LEFT", 0, 0)
+    posLabel:SetWidth(LABEL_WIDTH)
+    posLabel:SetJustifyH("LEFT")
+    posLabel:SetText("Position")
+
+    local posDropdown = CreateFrame("DropdownButton", frameName .. "PosDropdown", row2, "WowStyle1DropdownTemplate")
+    posDropdown:SetPoint("LEFT", posLabel, "RIGHT", 5, 0)
+    posDropdown:SetPoint("RIGHT", row2, "RIGHT", 0, 0)
+
+    posDropdown:SetupMenu(function(owner, rootDescription)
+        for _, pos in ipairs(POSITION_ORDER) do
+            rootDescription:CreateRadio(
+                ns.HOTKEY_POSITION_DISPLAY[pos],
+                function() return ns.db[prefix .. "position"] == pos end,
+                function()
+                    ns.db[prefix .. "position"] = pos
+                    if ns.RefreshAllHotkeys then ns.RefreshAllHotkeys() end
+                end,
+                pos
+            )
+        end
+    end)
+
+    -- Row 3: Font Size — conditional: visible when show=true
+    local row3 = CreateFrame("Frame", nil, f)
+    row3:SetHeight(ROW_HEIGHT)
+
+    local fontLabel = row3:CreateFontString(nil, "OVERLAY", "GameFontHighlightMedium")
+    fontLabel:SetPoint("LEFT", 0, 0)
+    fontLabel:SetWidth(LABEL_WIDTH)
+    fontLabel:SetJustifyH("LEFT")
+    fontLabel:SetText("Font Size")
+
+    local fontValue = row3:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    fontValue:SetPoint("RIGHT", 0, 0)
+    fontValue:SetJustifyH("RIGHT")
+    fontValue:SetText(tostring(db[prefix .. "fontSize"]))
+
+    local stepperName = frameName .. "FontStepper"
+    local fontSteppers = CreateFrame("Frame", stepperName, row3, "MinimalSliderWithSteppersTemplate")
+    fontSteppers:SetPoint("LEFT", fontLabel, "RIGHT", 5, 0)
+    fontSteppers:SetPoint("RIGHT", fontValue, "LEFT", -8, 0)
+    fontSteppers:SetHeight(17)
+
+    local fontSlider = fontSteppers.Slider
+    fontSlider:SetMinMaxValues(8, 20)
+    fontSlider:SetValueStep(1)
+    fontSlider:SetObeyStepOnDrag(true)
+    fontSlider:SetValue(db[prefix .. "fontSize"])
+    fontSlider:SetScript("OnValueChanged", function(self, value)
+        value = math.floor(value + 0.5)
+        ns.db[prefix .. "fontSize"] = value
+        fontValue:SetText(tostring(value))
+        if ns.RefreshAllHotkeys then ns.RefreshAllHotkeys() end
+    end)
+
+    local UpdatePanel
+
+    checkbox:SetScript("OnClick", function(self)
+        ns.db[prefix .. "show"] = self:GetChecked()
+        UpdatePanel()
+        if ns.RefreshAllHotkeys then ns.RefreshAllHotkeys() end
+    end)
+
+    UpdatePanel = function()
+        local showHotkeys = ns.db[prefix .. "show"]
+        checkbox:SetChecked(showHotkeys)
+
+        posDropdown:SetDefaultText(ns.HOTKEY_POSITION_DISPLAY[ns.db[prefix .. "position"]])
+
+        local steppers = _G[stepperName]
+        if steppers and steppers.Slider then
+            steppers.Slider:SetValue(ns.db[prefix .. "fontSize"])
+        end
+        fontValue:SetText(tostring(ns.db[prefix .. "fontSize"]))
+
+        local visibleRows = 1
+        local lastRow = row1
+
+        if showHotkeys then
+            row2:ClearAllPoints()
+            row2:SetPoint("TOPLEFT", lastRow, "BOTTOMLEFT", 0, 0)
+            row2:SetPoint("TOPRIGHT", lastRow, "BOTTOMRIGHT", 0, 0)
+            row2:Show()
+            lastRow = row2
+            visibleRows = visibleRows + 1
+
+            row3:ClearAllPoints()
+            row3:SetPoint("TOPLEFT", lastRow, "BOTTOMLEFT", 0, 0)
+            row3:SetPoint("TOPRIGHT", lastRow, "BOTTOMRIGHT", 0, 0)
+            row3:Show()
+            visibleRows = visibleRows + 1
+        else
+            row2:Hide()
+            row3:Hide()
+        end
+
+        f:SetHeight(titleBottom + (ROW_HEIGHT * visibleRows) + CONTENT_BOTTOM)
+    end
+
+    f.UpdatePanel = UpdatePanel
+    UpdatePanel()
+
+    return f
+end
+
+-- ---------------------------------------------------------------------------
+-- Essential / Utility hotkeys panel show / hide
+-- ---------------------------------------------------------------------------
+
+local function ShowEssentialHotkeysPanel()
+    if not essentialHotkeysPanel then
+        essentialHotkeysPanel = CreateHotkeysPanelForViewer(
+            "EnhancedCDMEssentialHotkeysPanel", "Enhanced CDM - Essential", "essential_hotkeys_")
+    end
+    essentialHotkeysPanel.UpdatePanel()
+    AnchorPanelToDialog(essentialHotkeysPanel, ns.essentialViewer)
+    essentialHotkeysPanel:Show()
+end
+
+local function HideEssentialHotkeysPanel()
+    if essentialHotkeysPanel then
+        essentialHotkeysPanel:Hide()
+    end
+end
+
+local function ShowUtilityHotkeysPanel()
+    if not utilityHotkeysPanel then
+        utilityHotkeysPanel = CreateHotkeysPanelForViewer(
+            "EnhancedCDMUtilityHotkeysPanel", "Enhanced CDM - Utility", "utility_hotkeys_")
+    end
+    utilityHotkeysPanel.UpdatePanel()
+    AnchorPanelToDialog(utilityHotkeysPanel, ns.utilityViewer)
+    utilityHotkeysPanel:Show()
+end
+
+local function HideUtilityHotkeysPanel()
+    if utilityHotkeysPanel then
+        utilityHotkeysPanel:Hide()
+    end
+end
+
+-- ---------------------------------------------------------------------------
 -- Edit Mode hooks — show/hide panel when Tracked Buffs system is selected
 -- ---------------------------------------------------------------------------
 
-function ns.SetupEditMode()
+local function HideAllPanels()
+    HideEnhancedCDMPanel()
+    HideBarsPanel()
+    HideEssentialHotkeysPanel()
+    HideUtilityHotkeysPanel()
+end
+
+local function SetupEditMode()
     if not EditModeManagerFrame then return end
     if editModeHooked then return end
     editModeHooked = true
 
-    local ok, err = pcall(function()
+    local ok = pcall(function()
         hooksecurefunc(EditModeManagerFrame, "SelectSystem", function(self, systemFrame)
             local buffViewer = _G["BuffIconCooldownViewer"]
             local buffBarViewer = _G["BuffBarCooldownViewer"]
+            local essViewer = _G["EssentialCooldownViewer"]
+            local utilViewer = _G["UtilityCooldownViewer"]
+            HideAllPanels()
             if systemFrame == buffViewer then
                 ShowEnhancedCDMPanel()
-                HideBarsPanel()
                 if ns.ScheduleLayout then ns.ScheduleLayout() end
             elseif systemFrame == buffBarViewer then
                 ShowBarsPanel()
-                HideEnhancedCDMPanel()
                 if ns.ScheduleBarsLayout then ns.ScheduleBarsLayout() end
-            else
-                HideEnhancedCDMPanel()
-                HideBarsPanel()
+            elseif systemFrame == essViewer then
+                ShowEssentialHotkeysPanel()
+            elseif systemFrame == utilViewer then
+                ShowUtilityHotkeysPanel()
             end
         end)
 
         if EditModeManagerFrame.ClearSelectedSystem then
             hooksecurefunc(EditModeManagerFrame, "ClearSelectedSystem", function()
-                HideEnhancedCDMPanel()
-                HideBarsPanel()
+                HideAllPanels()
             end)
         end
 
         -- Hide panels on Edit Mode exit and refresh layouts to clear stale positions
         hooksecurefunc(EditModeManagerFrame, "ExitEditMode", function()
-            HideEnhancedCDMPanel()
-            HideBarsPanel()
+            HideAllPanels()
             if ns.ScheduleLayout then ns.ScheduleLayout() end
             if ns.ScheduleBarsLayout then ns.ScheduleBarsLayout() end
         end)
@@ -553,3 +730,5 @@ function ns.SetupEditMode()
         print("|cffff6600Enhanced CDM:|r Edit Mode integration unavailable. Use /ecdm to configure.")
     end
 end
+
+ns.SetupEditMode = SetupEditMode
