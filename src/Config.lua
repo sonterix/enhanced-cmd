@@ -14,9 +14,11 @@ ns.DEFAULTS          = {
     essential_hotkeys_show     = false,
     essential_hotkeys_position = "TOPLEFT",
     essential_hotkeys_fontSize = 14,
+    essential_hotkeys_shorten  = true,
     utility_hotkeys_show       = false,
     utility_hotkeys_position   = "TOPLEFT",
     utility_hotkeys_fontSize   = 12,
+    utility_hotkeys_shorten    = true,
 }
 
 -- Display text for UI labels

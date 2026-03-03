@@ -501,29 +501,41 @@ local function CreateHotkeysPanelForViewer(frameName, titleText, prefix)
     row1:SetPoint("TOPLEFT", f, "TOPLEFT", CONTENT_LEFT, -titleBottom)
     row1:SetPoint("TOPRIGHT", f, "TOPRIGHT", -CONTENT_LEFT, -titleBottom)
 
+    local checkbox = CreateFrame("CheckButton", frameName .. "Checkbox", row1, "UICheckButtonTemplate")
+    checkbox:SetPoint("LEFT", 0, 0)
+    checkbox:SetSize(30, 30)
+
     local showLabel = row1:CreateFontString(nil, "OVERLAY", "GameFontHighlightMedium")
-    showLabel:SetPoint("LEFT", 0, 0)
-    showLabel:SetWidth(LABEL_WIDTH)
+    showLabel:SetPoint("LEFT", checkbox, "RIGHT", 5, 0)
     showLabel:SetJustifyH("LEFT")
     showLabel:SetText("Show Keybinds")
 
-    local checkbox = CreateFrame("CheckButton", frameName .. "Checkbox", row1, "UICheckButtonTemplate")
-    checkbox:SetPoint("LEFT", showLabel, "RIGHT", 5, 0)
-    checkbox:SetSize(26, 26)
-
-    -- Row 2: Position — conditional: visible when show=true
+    -- Row 2: Shorten Keybinds Text — conditional: visible when show=true
     local row2 = CreateFrame("Frame", nil, f)
     row2:SetHeight(ROW_HEIGHT)
 
-    local posLabel = row2:CreateFontString(nil, "OVERLAY", "GameFontHighlightMedium")
+    local shortenCheckbox = CreateFrame("CheckButton", frameName .. "ShortenCheckbox", row2, "UICheckButtonTemplate")
+    shortenCheckbox:SetPoint("LEFT", 0, 0)
+    shortenCheckbox:SetSize(30, 30)
+
+    local shortenLabel = row2:CreateFontString(nil, "OVERLAY", "GameFontHighlightMedium")
+    shortenLabel:SetPoint("LEFT", shortenCheckbox, "RIGHT", 5, 0)
+    shortenLabel:SetJustifyH("LEFT")
+    shortenLabel:SetText("Shorten Keybinds Text")
+
+    -- Row 3: Position — conditional: visible when show=true
+    local row3 = CreateFrame("Frame", nil, f)
+    row3:SetHeight(ROW_HEIGHT)
+
+    local posLabel = row3:CreateFontString(nil, "OVERLAY", "GameFontHighlightMedium")
     posLabel:SetPoint("LEFT", 0, 0)
     posLabel:SetWidth(LABEL_WIDTH)
     posLabel:SetJustifyH("LEFT")
     posLabel:SetText("Position")
 
-    local posDropdown = CreateFrame("DropdownButton", frameName .. "PosDropdown", row2, "WowStyle1DropdownTemplate")
+    local posDropdown = CreateFrame("DropdownButton", frameName .. "PosDropdown", row3, "WowStyle1DropdownTemplate")
     posDropdown:SetPoint("LEFT", posLabel, "RIGHT", 5, 0)
-    posDropdown:SetPoint("RIGHT", row2, "RIGHT", 0, 0)
+    posDropdown:SetPoint("RIGHT", row3, "RIGHT", 0, 0)
 
     posDropdown:SetupMenu(function(owner, rootDescription)
         for _, pos in ipairs(POSITION_ORDER) do
@@ -539,23 +551,23 @@ local function CreateHotkeysPanelForViewer(frameName, titleText, prefix)
         end
     end)
 
-    -- Row 3: Font Size — conditional: visible when show=true
-    local row3 = CreateFrame("Frame", nil, f)
-    row3:SetHeight(ROW_HEIGHT)
+    -- Row 4: Font Size — conditional: visible when show=true
+    local row4 = CreateFrame("Frame", nil, f)
+    row4:SetHeight(ROW_HEIGHT)
 
-    local fontLabel = row3:CreateFontString(nil, "OVERLAY", "GameFontHighlightMedium")
+    local fontLabel = row4:CreateFontString(nil, "OVERLAY", "GameFontHighlightMedium")
     fontLabel:SetPoint("LEFT", 0, 0)
     fontLabel:SetWidth(LABEL_WIDTH)
     fontLabel:SetJustifyH("LEFT")
     fontLabel:SetText("Font Size")
 
-    local fontValue = row3:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    local fontValue = row4:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     fontValue:SetPoint("RIGHT", 0, 0)
     fontValue:SetJustifyH("RIGHT")
     fontValue:SetText(tostring(db[prefix .. "fontSize"]))
 
     local stepperName = frameName .. "FontStepper"
-    local fontSteppers = CreateFrame("Frame", stepperName, row3, "MinimalSliderWithSteppersTemplate")
+    local fontSteppers = CreateFrame("Frame", stepperName, row4, "MinimalSliderWithSteppersTemplate")
     fontSteppers:SetPoint("LEFT", fontLabel, "RIGHT", 5, 0)
     fontSteppers:SetPoint("RIGHT", fontValue, "LEFT", -8, 0)
     fontSteppers:SetHeight(17)
@@ -580,9 +592,15 @@ local function CreateHotkeysPanelForViewer(frameName, titleText, prefix)
         if ns.RefreshAllHotkeys then ns.RefreshAllHotkeys() end
     end)
 
+    shortenCheckbox:SetScript("OnClick", function(self)
+        ns.db[prefix .. "shorten"] = self:GetChecked()
+        if ns.RefreshAllHotkeys then ns.RefreshAllHotkeys() end
+    end)
+
     UpdatePanel = function()
         local showHotkeys = ns.db[prefix .. "show"]
         checkbox:SetChecked(showHotkeys)
+        shortenCheckbox:SetChecked(ns.db[prefix .. "shorten"])
 
         posDropdown:SetDefaultText(ns.HOTKEY_POSITION_DISPLAY[ns.db[prefix .. "position"]])
 
@@ -607,10 +625,18 @@ local function CreateHotkeysPanelForViewer(frameName, titleText, prefix)
             row3:SetPoint("TOPLEFT", lastRow, "BOTTOMLEFT", 0, 0)
             row3:SetPoint("TOPRIGHT", lastRow, "BOTTOMRIGHT", 0, 0)
             row3:Show()
+            lastRow = row3
+            visibleRows = visibleRows + 1
+
+            row4:ClearAllPoints()
+            row4:SetPoint("TOPLEFT", lastRow, "BOTTOMLEFT", 0, 0)
+            row4:SetPoint("TOPRIGHT", lastRow, "BOTTOMRIGHT", 0, 0)
+            row4:Show()
             visibleRows = visibleRows + 1
         else
             row2:Hide()
             row3:Hide()
+            row4:Hide()
         end
 
         f:SetHeight(titleBottom + (ROW_HEIGHT * visibleRows) + CONTENT_BOTTOM)

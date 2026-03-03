@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.7.0] - 2026-03-03
+
+### Added
+- **Shorten Keybinds Text** toggle for Essential and Utility hotkey overlays (independently configurable)
+  - When enabled (default), abbreviates key names compactly (e.g. SHIFT-PAGEUP → SPU)
+  - When disabled, displays full unabbreviated key names
+- Additional key abbreviations: PAGEUP/PAGEDOWN, SPACEBAR, BACKSPACE, CAPSLOCK, INSERT, DELETE, HOME, and arrow keys
+- "Shorten Keybinds Text" checkbox in Edit Mode panels for Essential and Utility hotkeys
+- `/ecdm essential shorten|noshorten` and `/ecdm utility shorten|noshorten` slash commands
+- Tests for all new key abbreviations
+
+### Changed
+- Edit Mode hotkey panels use `[checkbox] [label]` layout for Show Keybinds row (Blizzard style)
+- Status output now includes text shortening state
+
 ## [0.6.2] - 2026-03-03
 
 ### Fixed

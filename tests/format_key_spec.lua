@@ -74,4 +74,46 @@ describe("FormatKeyText", function()
     it("abbreviates NUMPADDIVIDE to N/", function()
         expect(fmt("NUMPADDIVIDE")).to_equal("N/")
     end)
+
+    it("abbreviates PAGEUP to PU", function()
+        expect(fmt("PAGEUP")).to_equal("PU")
+        expect(fmt("SHIFT-PAGEUP")).to_equal("SPU")
+    end)
+
+    it("abbreviates PAGEDOWN to PD", function()
+        expect(fmt("PAGEDOWN")).to_equal("PD")
+    end)
+
+    it("abbreviates SPACEBAR to SP", function()
+        expect(fmt("SPACEBAR")).to_equal("SP")
+        expect(fmt("CTRL-SPACEBAR")).to_equal("CSP")
+    end)
+
+    it("abbreviates BACKSPACE to BS", function()
+        expect(fmt("BACKSPACE")).to_equal("BS")
+    end)
+
+    it("abbreviates CAPSLOCK to CAP", function()
+        expect(fmt("CAPSLOCK")).to_equal("CAP")
+    end)
+
+    it("abbreviates INSERT to INS", function()
+        expect(fmt("INSERT")).to_equal("INS")
+    end)
+
+    it("abbreviates DELETE to DEL", function()
+        expect(fmt("DELETE")).to_equal("DEL")
+    end)
+
+    it("abbreviates HOME to HM", function()
+        expect(fmt("HOME")).to_equal("HM")
+    end)
+
+    it("abbreviates arrow keys", function()
+        expect(fmt("DOWNARROW")).to_equal("DN")
+        expect(fmt("UPARROW")).to_equal("UP")
+        expect(fmt("LEFTARROW")).to_equal("LT")
+        expect(fmt("RIGHTARROW")).to_equal("RT")
+        expect(fmt("SHIFT-DOWNARROW")).to_equal("SDN")
+    end)
 end)

@@ -6,8 +6,8 @@ describe("Config defaults", function()
         local expected = {
             "maxPerRow", "growDirection", "align", "layout",
             "bars_orientation", "bars_layout", "bars_align", "bars_maxPerRow",
-            "essential_hotkeys_show", "essential_hotkeys_position", "essential_hotkeys_fontSize",
-            "utility_hotkeys_show", "utility_hotkeys_position", "utility_hotkeys_fontSize",
+            "essential_hotkeys_show", "essential_hotkeys_position", "essential_hotkeys_fontSize", "essential_hotkeys_shorten",
+            "utility_hotkeys_show", "utility_hotkeys_position", "utility_hotkeys_fontSize", "utility_hotkeys_shorten",
         }
         for _, key in ipairs(expected) do
             expect(ns.DEFAULTS[key] ~= nil).to_be_truthy()

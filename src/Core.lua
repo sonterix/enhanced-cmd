@@ -74,11 +74,24 @@ local function FormatKeyText(key)
     key = key:gsub("NUMPADMINUS", "N-")
     key = key:gsub("NUMPADMULTIPLY", "N*")
     key = key:gsub("NUMPADDIVIDE", "N/")
+    key = key:gsub("PAGEUP", "PU")
+    key = key:gsub("PAGEDOWN", "PD")
+    key = key:gsub("SPACEBAR", "SP")
+    key = key:gsub("BACKSPACE", "BS")
+    key = key:gsub("CAPSLOCK", "CAP")
+    key = key:gsub("INSERT", "INS")
+    key = key:gsub("DELETE", "DEL")
+    key = key:gsub("HOME", "HM")
+    key = key:gsub("DOWNARROW", "DN")
+    key = key:gsub("UPARROW", "UP")
+    key = key:gsub("LEFTARROW", "LT")
+    key = key:gsub("RIGHTARROW", "RT")
     return key
 end
 
 -- Returns formatted hotkey text for a spellID, or nil if not bound
-local function GetHotkeyText(spellID)
+-- When shorten is false, returns the raw key name without abbreviation
+local function GetHotkeyText(spellID, shorten)
     if not spellID then return nil end
 
     -- Try finding action bar slots for this spell
@@ -102,7 +115,7 @@ local function GetHotkeyText(spellID)
         if bindingName then
             local key = GetBindingKey(bindingName)
             if key then
-                return FormatKeyText(key)
+                return shorten and FormatKeyText(key) or key
             end
         end
     end
@@ -148,7 +161,8 @@ local function UpdateFrameHotkey(frame)
         return
     end
 
-    local text = GetHotkeyText(spellID)
+    local shorten = db[prefix .. "shorten"]
+    local text = GetHotkeyText(spellID, shorten)
     if not text then
         if frame._ecdmHotkeyText then
             frame._ecdmHotkeyText:Hide()
@@ -875,14 +889,25 @@ local function RegisterSlashCommands()
                 else
                     print("|cff00ccffEnhanced CDM:|r Usage: /ecdm " .. cmd .. " fontsize <8-20>")
                 end
+            elseif subCmd == "shorten" then
+                db[prefix .. "shorten"] = true
+                print("|cff00ccffEnhanced CDM:|r " .. label .. " hotkey text shortening enabled")
+                RefreshAllHotkeys()
+            elseif subCmd == "noshorten" then
+                db[prefix .. "shorten"] = false
+                print("|cff00ccffEnhanced CDM:|r " .. label .. " hotkey text shortening disabled")
+                RefreshAllHotkeys()
             else
                 local showText = db[prefix .. "show"] and "Shown" or "Hidden"
                 local posText = ns.HOTKEY_POSITION_DISPLAY[db[prefix .. "position"]] or db[prefix .. "position"]
-                print("|cff00ccffEnhanced CDM — " .. label .. " Hotkeys:|r " .. showText .. ", position " .. posText .. ", font size " .. db[prefix .. "fontSize"])
+                local shortenText = db[prefix .. "shorten"] and "Shortened" or "Full"
+                print("|cff00ccffEnhanced CDM — " .. label .. " Hotkeys:|r " .. showText .. ", position " .. posText .. ", font size " .. db[prefix .. "fontSize"] .. ", text " .. shortenText)
                 print("  /ecdm " .. cmd .. " show              - Show keybinds")
                 print("  /ecdm " .. cmd .. " hide              - Hide keybinds")
                 print("  /ecdm " .. cmd .. " position <pos>    - Set position")
                 print("  /ecdm " .. cmd .. " fontsize <8-20>   - Set font size")
+                print("  /ecdm " .. cmd .. " shorten           - Shorten keybind text")
+                print("  /ecdm " .. cmd .. " noshorten         - Show full keybind text")
             end
         elseif cmd == "bars" then
             local subCmd, subArg = arg:match("^(%S+)%s*(.*)")
@@ -964,10 +989,12 @@ local function RegisterSlashCommands()
             print("  Bars:  " .. bOrient .. ", " .. bLayout .. ", align " .. bAlign .. ", " .. db.bars_maxPerRow .. " per row")
             local eShow = db.essential_hotkeys_show and "Shown" or "Hidden"
             local ePos = ns.HOTKEY_POSITION_DISPLAY[db.essential_hotkeys_position] or db.essential_hotkeys_position
-            print("  Essential: " .. eShow .. ", position " .. ePos .. ", font size " .. db.essential_hotkeys_fontSize)
+            local eShorten = db.essential_hotkeys_shorten and "Shortened" or "Full"
+            print("  Essential: " .. eShow .. ", position " .. ePos .. ", font size " .. db.essential_hotkeys_fontSize .. ", text " .. eShorten)
             local uShow = db.utility_hotkeys_show and "Shown" or "Hidden"
             local uPos = ns.HOTKEY_POSITION_DISPLAY[db.utility_hotkeys_position] or db.utility_hotkeys_position
-            print("  Utility:   " .. uShow .. ", position " .. uPos .. ", font size " .. db.utility_hotkeys_fontSize)
+            local uShorten = db.utility_hotkeys_shorten and "Shortened" or "Full"
+            print("  Utility:   " .. uShow .. ", position " .. uPos .. ", font size " .. db.utility_hotkeys_fontSize .. ", text " .. uShorten)
             print("  /ecdm rows <1-40>               - Icons per row")
             print("  /ecdm grow <up|down>             - Row growth direction")
             print("  /ecdm align <left|center|right>  - Row alignment")
