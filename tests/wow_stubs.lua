@@ -1,0 +1,149 @@
+-- WoW API stubs — minimal mocks so addon files can load outside WoW
+-- Only stubs that the addon actually calls are defined here.
+
+-- WoW global: wipe(table) — clears all keys
+function wipe(t)
+    for k in pairs(t) do t[k] = nil end
+    return t
+end
+
+-- WoW global: hooksecurefunc — we just store the hook, no original to call
+function hooksecurefunc(tblOrName, nameOrFunc, funcOrNil)
+    -- Two forms:
+    --   hooksecurefunc(obj, "Method", hook)
+    --   hooksecurefunc("GlobalFunc", hook)
+    -- For testing we do nothing — hooks are Blizzard-specific
+end
+
+-- Minimal frame mock
+local FrameMixin = {}
+FrameMixin.__index = FrameMixin
+
+function FrameMixin:GetParent() return self._parent end
+function FrameMixin:GetChildren() return unpack(self._children or {}) end
+function FrameMixin:SetSize(w, h) self._width = w; self._height = h end
+function FrameMixin:GetWidth() return self._width or 0 end
+function FrameMixin:GetHeight() return self._height or 0 end
+function FrameMixin:GetScale() return self._scale or 1 end
+function FrameMixin:SetPoint(...) end
+function FrameMixin:ClearAllPoints() end
+function FrameMixin:SetAllPoints() end
+function FrameMixin:Show() self._shown = true end
+function FrameMixin:Hide() self._shown = false end
+function FrameMixin:IsShown() return self._shown ~= false end
+function FrameMixin:EnableMouse() end
+function FrameMixin:SetFrameStrata() end
+function FrameMixin:SetFrameLevel() end
+function FrameMixin:SetWidth(w) self._width = w end
+function FrameMixin:SetHeight(h) self._height = h end
+function FrameMixin:RegisterEvent() end
+function FrameMixin:SetScript(event, handler)
+    self._scripts = self._scripts or {}
+    self._scripts[event] = handler
+end
+function FrameMixin:GetScript(event)
+    return self._scripts and self._scripts[event]
+end
+function FrameMixin:HookScript() end
+function FrameMixin:CreateFontString()
+    return setmetatable({
+        SetPoint = function() end,
+        SetText = function() end,
+        SetTextColor = function() end,
+        SetFont = function() end,
+        SetJustifyH = function() end,
+        ClearAllPoints = function() end,
+        Show = function() end,
+        Hide = function() end,
+        GetStringHeight = function() return 14 end,
+    }, {})
+end
+function FrameMixin:GetAttribute(key) return self._attributes and self._attributes[key] end
+function FrameMixin:SetAttribute(key, val)
+    self._attributes = self._attributes or {}
+    self._attributes[key] = val
+end
+
+-- Registry of all frames created during the session
+_G._allFrames = {}
+
+function CreateFrame(frameType, name, parent, template)
+    local f = setmetatable({
+        _type = frameType,
+        _name = name,
+        _parent = parent,
+        _children = {},
+        _shown = true,
+        _width = 0,
+        _height = 0,
+        _scale = 1,
+        Slider = {
+            SetMinMaxValues = function() end,
+            SetValueStep = function() end,
+            SetObeyStepOnDrag = function() end,
+            SetValue = function() end,
+            SetScript = function() end,
+        },
+    }, FrameMixin)
+    if name then _G[name] = f end
+    table.insert(_G._allFrames, f)
+    return f
+end
+
+-- C_Timer stub
+C_Timer = C_Timer or {}
+function C_Timer.NewTimer(delay, func)
+    -- In tests, execute immediately for predictability
+    func()
+    return { Cancel = function() end }
+end
+function C_Timer.NewTicker(interval, func)
+    return { Cancel = function() end }
+end
+
+-- C_AddOns stub
+C_AddOns = C_AddOns or {}
+function C_AddOns.GetAddOnMetadata(addon, key)
+    if key == "Version" then return "0.0.0-test" end
+    return nil
+end
+
+-- C_ActionBar stub
+C_ActionBar = C_ActionBar or {}
+function C_ActionBar.FindSpellActionButtons(spellID)
+    return {}
+end
+
+-- C_Spell stub
+C_Spell = C_Spell or {}
+function C_Spell.GetOverrideSpell(spellID)
+    return spellID
+end
+
+-- Binding stub
+function GetBindingKey(binding)
+    return nil
+end
+
+-- Event registry stub
+EventRegistry = EventRegistry or {}
+function EventRegistry:RegisterCallback(...) end
+
+-- Enum stubs
+Enum = Enum or {}
+Enum.EditModeCooldownViewerSetting = Enum.EditModeCooldownViewerSetting or {}
+Enum.EditModeCooldownViewerSetting.IconDirection = 1
+
+-- Slash command globals
+SlashCmdList = SlashCmdList or {}
+
+-- Mixin stubs (nil by default, some tests may set these)
+CooldownViewerMixin = nil
+CooldownViewerItemDataMixin = nil
+EditModeManagerFrame = nil
+
+-- UIParent stub
+UIParent = UIParent or CreateFrame("Frame", "UIParent")
+
+-- EnhancedCDMDB starts nil (like first login)
+EnhancedCDMDB = nil

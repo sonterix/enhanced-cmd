@@ -203,6 +203,34 @@ end
 ns.RefreshAllHotkeys = RefreshAllHotkeys
 
 -- ---------------------------------------------------------------------------
+-- Grid math — pure position calculation, no frame dependencies
+-- ---------------------------------------------------------------------------
+
+-- Calculates the x,y position for icon at 1-based index in a grid.
+-- Returns x, y (unscaled pixel offsets from the grid origin).
+local function CalcGridPosition(index, maxPerRow, iconW, iconH, spacing, align, totalIcons, fullRowWidth)
+    local idx = index - 1
+    local col = idx % maxPerRow
+    local row = math.floor(idx / maxPerRow)
+
+    local alignOffset = 0
+    if align ~= "LEFT" then
+        local rowStart = row * maxPerRow
+        local iconsOnRow = math.min(maxPerRow, totalIcons - rowStart)
+        local rowWidth = iconsOnRow * (iconW + spacing) - spacing
+        if align == "CENTER" then
+            alignOffset = (fullRowWidth - rowWidth) / 2
+        elseif align == "RIGHT" then
+            alignOffset = fullRowWidth - rowWidth
+        end
+    end
+
+    local x = alignOffset + col * (iconW + spacing)
+    local y = row * (iconH + spacing)
+    return x, y
+end
+
+-- ---------------------------------------------------------------------------
 -- Layout — positions visible icons in a multi-row grid and sizes the viewer
 -- ---------------------------------------------------------------------------
 
@@ -278,25 +306,7 @@ local function ApplyLayout()
     -- Position each icon in the grid
     for i = 1, n do
         local frame = visibleBuf[i]
-        local idx = i - 1
-        local col = idx % maxPerRow
-        local row = math.floor(idx / maxPerRow)
-
-        -- Shift incomplete rows for center/right alignment
-        local alignOffset = 0
-        if align ~= "LEFT" then
-            local rowStart = row * maxPerRow
-            local iconsOnRow = math.min(maxPerRow, totalIcons - rowStart)
-            local rowWidth = iconsOnRow * (iconW + spacing) - spacing
-            if align == "CENTER" then
-                alignOffset = (fullRowWidth - rowWidth) / 2
-            elseif align == "RIGHT" then
-                alignOffset = fullRowWidth - rowWidth
-            end
-        end
-
-        local x = alignOffset + col * (iconW + spacing)
-        local y = row * (iconH + spacing)
+        local x, y = CalcGridPosition(i, maxPerRow, iconW, iconH, spacing, align, totalIcons, fullRowWidth)
 
         -- Cache target position for the SetPoint hook to enforce
         frame._arTargetX = x
@@ -992,3 +1002,7 @@ eventFrame:SetScript("OnEvent", function(_, event, arg1)
         RefreshAllHotkeys()
     end
 end)
+
+-- Test-only exports — used by tests/runner.lua, not by other addon files
+ns._FormatKeyText = FormatKeyText
+ns._CalcGridPosition = CalcGridPosition
