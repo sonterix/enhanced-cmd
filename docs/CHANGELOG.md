@@ -1,5 +1,34 @@
 # Changelog
 
+## [0.6.1] - 2026-03-02
+
+### Fixed
+- Crash in `GetHotkeyText()` when `C_ActionBar` API is unavailable during override spell resolution
+- Viewer recreation during polling window now correctly detected and re-hooked
+
+### Changed
+- Removed unnecessary `RefreshAllHotkeys()` from CDM settings change callback
+- Deduplicated `RefreshAllHotkeys()` calls when multiple hotkey viewers discovered simultaneously
+- Extracted shared `HookViewerChild()`, `InstallViewerHooks()`, `SortByLayoutIndex()` helpers in Core
+- Extracted shared `AnchorPanelToDialog()`, `HideAllPanels()` helpers and hoisted layout constants in EditMode
+- `SetupEditMode` now follows `local function` + `ns` assignment convention
+- Removed unused `err` captures from `pcall()` calls
+
+## [0.6.0] - 2026-03-02
+
+### Added
+- **Keybinding text overlay** for Essential and Utility cooldown icons
+  - Displays the configured hotkey from action bars on each cooldown icon
+  - Only shows for abilities placed on action bars with a keybinding assigned
+  - Resolves talent overrides and spell replacements via `C_Spell.GetOverrideSpell`
+  - Compact format: SHIFT → S, CTRL → C, ALT → A (e.g. "S3", "CF1")
+  - Styled like Blizzard's stack count text (Arial Narrow, outline)
+- **Separate hotkey settings** for Essential and Utility cooldowns (independently configurable)
+  - Show/hide toggle, 9-position anchor, configurable font size (8–20) per viewer
+- Separate Edit Mode panels for Essential and Utility cooldowns with checkbox + conditional settings
+- `/ecdm essential` and `/ecdm utility` slash command namespaces with `show`, `hide`, `position`, and `fontsize` subcommands
+- Auto-refresh on keybinding changes, action bar changes, and specialization changes
+
 ## [0.5.0] - 2026-03-02
 
 ### Added
