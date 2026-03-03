@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.5.0] - 2026-03-02
+
+### Added
+- **Tracked Bars support** — configurable layout for the `BuffBarCooldownViewer` (Tracked Bars)
+  - **Orientation**: Vertical (single column, default) or Horizontal (multi-row grid)
+  - **Layout mode**: Static or Dynamic, same behavior as icon layout
+  - **Conditional alignment**: Down/Up in vertical mode, Left/Center/Right in horizontal mode (dynamic only)
+  - **Bars per row**: Configurable 1–40, applies in horizontal mode only
+- Separate Edit Mode panel for Tracked Bars with conditional row visibility
+- `/ecdm bars` slash command namespace with `orientation`, `layout`, `align`, and `perrow` subcommands
+- Dual-viewer init polling — finds both icon and bar viewers independently
+- `CooldownViewerSettings.OnDataChanged` now triggers relayout for both viewers
+- Blizzard's "Icon Direction" setting hidden for both Tracked Buffs and Tracked Bars
+
+### Changed
+- Mixin hooks (`OnAcquireItemFrame`, `SetCooldownID`, `ClearCooldownID`) now dispatch to the correct viewer
+- `/ecdm` status output now shows both icon and bar settings
+- `TryInit()` handles recreation of both viewers across loading screens
+
 ## [0.4.0] - 2026-03-01
 
 ### Added

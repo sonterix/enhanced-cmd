@@ -9,12 +9,20 @@ local hooksInstalled = false
 local layoutTimer = nil
 local VERSION
 
+local barViewer
+local barHookedFrames = {}
+local barHooksInstalled = false
+local barLayoutTimer = nil
+
 -- ---------------------------------------------------------------------------
 -- Layout — positions visible icons in a multi-row grid and sizes the viewer
 -- ---------------------------------------------------------------------------
 
 local visibleBuf = {}
 local HookFrame  -- forward declaration; defined after ScheduleLayout
+
+local barVisibleBuf = {}
+local HookBarFrame  -- forward declaration; defined after ScheduleBarsLayout
 
 local function ApplyLayout()
     if not viewer then return end
@@ -179,6 +187,180 @@ HookFrame = function(frame)
 end
 
 -- ---------------------------------------------------------------------------
+-- Bars layout — positions bar children in a vertical column or horizontal grid
+-- ---------------------------------------------------------------------------
+
+local function ApplyBarsLayout()
+    if not barViewer then return end
+
+    local isDynamic = (db.bars_layout == "DYNAMIC")
+    local isHorizontal = (db.bars_orientation == "HORIZONTAL")
+
+    wipe(barVisibleBuf)
+    local children = { barViewer:GetChildren() }
+    local n = 0
+    local withCooldownID = 0
+    for i = 1, #children do
+        local child = children[i]
+        HookBarFrame(child)
+        if child.cooldownID then
+            withCooldownID = withCooldownID + 1
+            if not isDynamic or child:IsShown() then
+                n = n + 1
+                barVisibleBuf[n] = child
+            end
+        end
+    end
+
+    if n == 0 then return end
+
+    table.sort(barVisibleBuf, function(a, b)
+        return (a.layoutIndex or 0) < (b.layoutIndex or 0)
+    end)
+
+    local scale = barVisibleBuf[1]:GetScale()
+    if scale < 0.01 then scale = 1 end
+
+    local barW = barVisibleBuf[1]:GetWidth()
+    local barH = barVisibleBuf[1]:GetHeight()
+    if barW < 1 then barW = 220 end
+    if barH < 1 then barH = 30 end
+
+    local spacing = 0
+    if barViewer.iconPadding ~= nil then
+        local offset = barViewer.GetAdditionalPaddingOffset
+            and barViewer:GetAdditionalPaddingOffset() or -4
+        spacing = barViewer.iconPadding + offset
+    end
+
+    local align = db.bars_align
+
+    if isHorizontal then
+        -- Multi-row grid (wraps at bars_maxPerRow)
+        local maxPerRow = db.bars_maxPerRow
+        local totalBars = n
+        local numRows = math.ceil(totalBars / maxPerRow)
+        local refCols = maxPerRow
+        local refRows = isDynamic and math.max(numRows, math.ceil(withCooldownID / maxPerRow)) or numRows
+        local fullRowWidth = refCols * (barW + spacing) - spacing
+
+        for i = 1, n do
+            local frame = barVisibleBuf[i]
+            local idx = i - 1
+            local col = idx % maxPerRow
+            local row = math.floor(idx / maxPerRow)
+
+            local alignOffset = 0
+            if isDynamic and align ~= "LEFT" then
+                local rowStart = row * maxPerRow
+                local barsOnRow = math.min(maxPerRow, totalBars - rowStart)
+                local rowWidth = barsOnRow * (barW + spacing) - spacing
+                if align == "CENTER" then
+                    alignOffset = (fullRowWidth - rowWidth) / 2
+                elseif align == "RIGHT" then
+                    alignOffset = fullRowWidth - rowWidth
+                end
+            end
+
+            local x = alignOffset + col * (barW + spacing)
+            local y = row * (barH + spacing)
+
+            frame._arTargetX = x
+            frame._arTargetY = y
+            frame._arSettingPos = true
+            frame:ClearAllPoints()
+            frame:SetPoint("TOPLEFT", barViewer, "TOPLEFT", x, -y)
+            frame._arSettingPos = false
+        end
+
+        local totalW = (refCols * (barW + spacing) - spacing) * scale
+        local totalH = (refRows * (barH + spacing) - spacing) * scale
+        if totalW > 0 and totalH > 0 then
+            barViewer:SetSize(totalW, totalH)
+        end
+    else
+        -- Single column (vertical)
+        local refRows = isDynamic and math.max(n, withCooldownID) or n
+        local growDown = (align ~= "UP") -- DOWN is default / static behavior
+
+        for i = 1, n do
+            local frame = barVisibleBuf[i]
+            local row = i - 1
+            local y = row * (barH + spacing)
+
+            frame._arTargetX = 0
+            frame._arTargetY = y
+            frame._arSettingPos = true
+            frame:ClearAllPoints()
+            if growDown or not isDynamic then
+                frame:SetPoint("TOPLEFT", barViewer, "TOPLEFT", 0, -y)
+            else
+                frame:SetPoint("BOTTOMLEFT", barViewer, "BOTTOMLEFT", 0, y)
+            end
+            frame._arSettingPos = false
+        end
+
+        local totalW = barW * scale
+        local totalH = (refRows * (barH + spacing) - spacing) * scale
+        if totalW > 0 and totalH > 0 then
+            barViewer:SetSize(totalW, totalH)
+        end
+    end
+end
+
+-- ---------------------------------------------------------------------------
+-- Bars debounced scheduling
+-- ---------------------------------------------------------------------------
+
+local function ScheduleBarsLayout()
+    if barLayoutTimer then barLayoutTimer:Cancel() end
+
+    barLayoutTimer = C_Timer.NewTimer(0, function()
+        barLayoutTimer = nil
+        ApplyBarsLayout()
+    end)
+end
+
+ns.ApplyBarsLayout = ApplyBarsLayout
+ns.ScheduleBarsLayout = ScheduleBarsLayout
+
+-- ---------------------------------------------------------------------------
+-- Per-bar-frame hook — overrides Blizzard's SetPoint and relayouts on show/hide
+-- ---------------------------------------------------------------------------
+
+HookBarFrame = function(frame)
+    if barHookedFrames[frame] then return end
+    barHookedFrames[frame] = true
+
+    hooksecurefunc(frame, "SetPoint", function(self)
+        if self._arSettingPos then return end
+        if not self._arTargetX then return end
+        if self:GetParent() ~= barViewer then return end
+
+        local isHorizontal = (db.bars_orientation == "HORIZONTAL")
+        local growDown = isHorizontal or (db.bars_align ~= "UP") or (db.bars_layout ~= "DYNAMIC")
+
+        self._arSettingPos = true
+        self:ClearAllPoints()
+        if growDown then
+            self:SetPoint("TOPLEFT", barViewer, "TOPLEFT", self._arTargetX, -self._arTargetY)
+        else
+            self:SetPoint("BOTTOMLEFT", barViewer, "BOTTOMLEFT", self._arTargetX, self._arTargetY)
+        end
+        self._arSettingPos = false
+    end)
+
+    frame:HookScript("OnShow", function(self)
+        if self:GetParent() ~= barViewer then return end
+        ScheduleBarsLayout()
+    end)
+    frame:HookScript("OnHide", function(self)
+        if self:GetParent() ~= barViewer then return end
+        ScheduleBarsLayout()
+    end)
+end
+
+-- ---------------------------------------------------------------------------
 -- Mixin hooks — catch new frames, cooldown changes, and CDM settings updates
 -- ---------------------------------------------------------------------------
 
@@ -186,30 +368,38 @@ local function InstallMixinHooks()
     if mixinHooksInstalled then return end
     mixinHooksInstalled = true
 
-    -- Hook new icon frame acquisition (fires when Blizzard creates/recycles icons)
+    -- Hook new frame acquisition (fires when Blizzard creates/recycles frames)
     if CooldownViewerMixin and CooldownViewerMixin.OnAcquireItemFrame then
         hooksecurefunc(CooldownViewerMixin, "OnAcquireItemFrame", function(self, frame)
-            if self ~= viewer then return end
-            HookFrame(frame)
-            ScheduleLayout()
+            if self == viewer then
+                HookFrame(frame)
+                ScheduleLayout()
+            elseif self == barViewer then
+                HookBarFrame(frame)
+                ScheduleBarsLayout()
+            end
         end)
     end
 
     -- Hook cooldown assignment/removal (triggers relayout when buffs change)
     if CooldownViewerItemDataMixin then
-        local function IsOurFrame(frame)
+        local function DispatchSchedule(frame)
             local parent = frame and frame:GetParent()
-            return parent == viewer
+            if parent == viewer then
+                ScheduleLayout()
+            elseif parent == barViewer then
+                ScheduleBarsLayout()
+            end
         end
 
         if CooldownViewerItemDataMixin.SetCooldownID then
             hooksecurefunc(CooldownViewerItemDataMixin, "SetCooldownID", function(self)
-                if IsOurFrame(self) then ScheduleLayout() end
+                DispatchSchedule(self)
             end)
         end
         if CooldownViewerItemDataMixin.ClearCooldownID then
             hooksecurefunc(CooldownViewerItemDataMixin, "ClearCooldownID", function(self)
-                if IsOurFrame(self) then ScheduleLayout() end
+                DispatchSchedule(self)
             end)
         end
     end
@@ -218,7 +408,10 @@ local function InstallMixinHooks()
     if EventRegistry then
         EventRegistry:RegisterCallback(
             "CooldownViewerSettings.OnDataChanged",
-            ScheduleLayout,
+            function()
+                ScheduleLayout()
+                ScheduleBarsLayout()
+            end,
             ADDON_NAME
         )
     end
@@ -257,38 +450,101 @@ local function InstallHooks()
 end
 
 -- ---------------------------------------------------------------------------
--- Deferred init — polls for BuffIconCooldownViewer (may not exist immediately)
+-- Bar hook installation — patches the bar viewer instance once it's found
+-- ---------------------------------------------------------------------------
+
+local function InstallBarsHooks()
+    if barHooksInstalled then return end
+    barHooksInstalled = true
+
+    local ok, err = pcall(function()
+        InstallMixinHooks()
+
+        hooksecurefunc(barViewer, "Layout", function()
+            ScheduleBarsLayout()
+        end)
+
+        local children = { barViewer:GetChildren() }
+        for _, child in ipairs(children) do
+            HookBarFrame(child)
+        end
+
+        ApplyBarsLayout()
+    end)
+
+    if not ok then
+        barHooksInstalled = false
+        print("|cffff6600Enhanced CDM:|r Bar hook installation failed — bars layout disabled.")
+    end
+end
+
+-- ---------------------------------------------------------------------------
+-- Deferred init — polls for both viewers (may not exist immediately)
 -- ---------------------------------------------------------------------------
 
 local function TryInit()
     -- Handle viewer recreation across loading screens
     local newViewer = _G["BuffIconCooldownViewer"]
+    local newBarViewer = _G["BuffBarCooldownViewer"]
+    local needEditMode = false
+
     if newViewer and newViewer ~= viewer then
         viewer = newViewer
         ns.viewer = viewer
         hooksInstalled = false
         wipe(hookedFrames)
         InstallHooks()
-        if ns.SetupEditMode then ns.SetupEditMode() end
-        return
+        needEditMode = true
     end
-    if viewer then return end
 
-    -- Poll every 0.5s for up to 10s until the viewer appears
+    if newBarViewer and newBarViewer ~= barViewer then
+        barViewer = newBarViewer
+        ns.barViewer = barViewer
+        barHooksInstalled = false
+        wipe(barHookedFrames)
+        InstallBarsHooks()
+        needEditMode = true
+    end
+
+    if needEditMode then
+        if ns.SetupEditMode then ns.SetupEditMode() end
+    end
+
+    -- Both already found — nothing to do
+    if viewer and barViewer then return end
+
+    -- Poll every 0.5s for up to 10s until both viewers appear
     local attempts = 0
     local ticker
     ticker = C_Timer.NewTicker(0.5, function()
         attempts = attempts + 1
-        local found = _G["BuffIconCooldownViewer"]
-        if found then
-            viewer = found
+        local foundNew = false
+
+        local foundViewer = _G["BuffIconCooldownViewer"]
+        if foundViewer and not viewer then
+            viewer = foundViewer
             ns.viewer = viewer
-            ticker:Cancel()
             InstallHooks()
+            foundNew = true
+        end
+
+        local foundBarViewer = _G["BuffBarCooldownViewer"]
+        if foundBarViewer and not barViewer then
+            barViewer = foundBarViewer
+            ns.barViewer = barViewer
+            InstallBarsHooks()
+            foundNew = true
+        end
+
+        if foundNew then
             if ns.SetupEditMode then ns.SetupEditMode() end
-        elseif attempts >= 20 then
+        end
+
+        if (viewer and barViewer) or attempts >= 20 then
             ticker:Cancel()
-            print("|cffff6600Enhanced CDM:|r BuffIconCooldownViewer not found. Is the Cooldown Manager enabled?")
+            if not viewer and not barViewer then
+                print("|cffff6600Enhanced CDM:|r No CDM viewers found. Is the Cooldown Manager enabled?")
+            end
         end
     end)
 end
@@ -341,16 +597,89 @@ local function RegisterSlashCommands()
             else
                 print("|cff00ccffEnhanced CDM:|r Usage: /ecdm layout <static|dynamic>")
             end
+        elseif cmd == "bars" then
+            local subCmd, subArg = arg:match("^(%S+)%s*(.*)")
+            subCmd = subCmd and subCmd:lower() or ""
+
+            if subCmd == "orientation" then
+                local o = subArg:upper()
+                if o == "VERTICAL" or o == "HORIZONTAL" then
+                    db.bars_orientation = o
+                    if o == "VERTICAL" then
+                        db.bars_align = "DOWN"
+                        db.bars_maxPerRow = ns.DEFAULTS.bars_maxPerRow
+                    elseif o == "HORIZONTAL" then
+                        db.bars_align = "CENTER"
+                    end
+                    print("|cff00ccffEnhanced CDM:|r Bars orientation set to " .. ns.ORIENTATION_DISPLAY[o])
+                    ApplyBarsLayout()
+                else
+                    print("|cff00ccffEnhanced CDM:|r Usage: /ecdm bars orientation <vertical|horizontal>")
+                end
+            elseif subCmd == "layout" then
+                local l = subArg:upper()
+                if l == "STATIC" or l == "DYNAMIC" then
+                    db.bars_layout = l
+                    print("|cff00ccffEnhanced CDM:|r Bars layout set to " .. ns.LAYOUT_DISPLAY[l])
+                    ApplyBarsLayout()
+                else
+                    print("|cff00ccffEnhanced CDM:|r Usage: /ecdm bars layout <static|dynamic>")
+                end
+            elseif subCmd == "align" then
+                local a = subArg:upper()
+                if db.bars_orientation == "VERTICAL" then
+                    if a == "DOWN" or a == "UP" then
+                        db.bars_align = a
+                        print("|cff00ccffEnhanced CDM:|r Bars alignment set to " .. ns.BAR_ALIGN_V_DISPLAY[a])
+                        ApplyBarsLayout()
+                    else
+                        print("|cff00ccffEnhanced CDM:|r Usage: /ecdm bars align <up|down>")
+                    end
+                else
+                    if a == "LEFT" or a == "CENTER" or a == "RIGHT" then
+                        db.bars_align = a
+                        print("|cff00ccffEnhanced CDM:|r Bars alignment set to " .. ns.BAR_ALIGN_H_DISPLAY[a])
+                        ApplyBarsLayout()
+                    else
+                        print("|cff00ccffEnhanced CDM:|r Usage: /ecdm bars align <left|center|right>")
+                    end
+                end
+            elseif subCmd == "perrow" then
+                local n = tonumber(subArg)
+                if n and n >= 1 and n <= 8 then
+                    db.bars_maxPerRow = math.floor(n)
+                    print("|cff00ccffEnhanced CDM:|r Bars per row set to " .. db.bars_maxPerRow)
+                    ApplyBarsLayout()
+                else
+                    print("|cff00ccffEnhanced CDM:|r Usage: /ecdm bars perrow <1-8>")
+                end
+            else
+                local orientDisplay = ns.ORIENTATION_DISPLAY[db.bars_orientation]
+                local layoutDisplay = ns.LAYOUT_DISPLAY[db.bars_layout]
+                local alignMap = db.bars_orientation == "VERTICAL" and ns.BAR_ALIGN_V_DISPLAY or ns.BAR_ALIGN_H_DISPLAY
+                local alignDisplay = alignMap[db.bars_align] or db.bars_align
+                print("|cff00ccffEnhanced CDM — Bars:|r " .. orientDisplay .. ", " .. layoutDisplay .. ", align " .. alignDisplay .. ", " .. db.bars_maxPerRow .. " per row")
+                print("  /ecdm bars orientation <vertical|horizontal>")
+                print("  /ecdm bars layout <static|dynamic>")
+                print("  /ecdm bars align <up|down|left|center|right>")
+                print("  /ecdm bars perrow <1-8>")
+            end
         else
             print("|cff00ccffEnhanced CDM|r v" .. (VERSION or "?"))
             local dirDisplay = ns.DIRECTION_DISPLAY[db.growDirection]
             local alignDisplay = ns.ALIGN_DISPLAY[db.align]
             local layoutDisplay = ns.LAYOUT_DISPLAY[db.layout]
-            print("  Current: " .. db.maxPerRow .. " per row, grow " .. dirDisplay .. ", align " .. alignDisplay .. ", layout " .. layoutDisplay)
+            print("  Icons: " .. db.maxPerRow .. " per row, grow " .. dirDisplay .. ", align " .. alignDisplay .. ", layout " .. layoutDisplay)
+            local bOrient = ns.ORIENTATION_DISPLAY[db.bars_orientation]
+            local bLayout = ns.LAYOUT_DISPLAY[db.bars_layout]
+            local bAlignMap = db.bars_orientation == "VERTICAL" and ns.BAR_ALIGN_V_DISPLAY or ns.BAR_ALIGN_H_DISPLAY
+            local bAlign = bAlignMap[db.bars_align] or db.bars_align
+            print("  Bars:  " .. bOrient .. ", " .. bLayout .. ", align " .. bAlign .. ", " .. db.bars_maxPerRow .. " per row")
             print("  /ecdm rows <1-40>               - Icons per row")
             print("  /ecdm grow <up|down>             - Row growth direction")
             print("  /ecdm align <left|center|right>  - Row alignment")
             print("  /ecdm layout <static|dynamic>    - Layout mode")
+            print("  /ecdm bars                       - Bars settings and commands")
         end
     end
 end
