@@ -202,6 +202,15 @@ end
 
 ns.RefreshAllHotkeys = RefreshAllHotkeys
 
+local hotkeyRefreshTimer = nil
+local function ScheduleHotkeyRefresh()
+    if hotkeyRefreshTimer then hotkeyRefreshTimer:Cancel() end
+    hotkeyRefreshTimer = C_Timer.NewTimer(0, function()
+        hotkeyRefreshTimer = nil
+        RefreshAllHotkeys()
+    end)
+end
+
 -- ---------------------------------------------------------------------------
 -- Grid math — pure position calculation, no frame dependencies
 -- ---------------------------------------------------------------------------
@@ -615,6 +624,7 @@ local function InstallMixinHooks()
             function()
                 ScheduleLayout()
                 ScheduleBarsLayout()
+                ScheduleHotkeyRefresh()
             end,
             ADDON_NAME
         )
