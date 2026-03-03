@@ -9,16 +9,20 @@ ns.DEFAULTS          = {
     layout           = "STATIC",
     bars_orientation = "VERTICAL",
     bars_layout      = "STATIC",
-    bars_align       = "CENTER",
+    bars_align       = "DOWN",
     bars_maxPerRow   = 2,
     essential_hotkeys_show     = false,
     essential_hotkeys_position = "TOPLEFT",
     essential_hotkeys_fontSize = 14,
     essential_hotkeys_shorten  = true,
+    essential_hotkeys_offsetX  = 2,
+    essential_hotkeys_offsetY  = -2,
     utility_hotkeys_show       = false,
     utility_hotkeys_position   = "TOPLEFT",
     utility_hotkeys_fontSize   = 12,
     utility_hotkeys_shorten    = true,
+    utility_hotkeys_offsetX    = 2,
+    utility_hotkeys_offsetY    = -2,
 }
 
 -- Display text for UI labels

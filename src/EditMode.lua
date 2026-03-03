@@ -8,7 +8,9 @@ local utilityHotkeysPanel
 local editModeHooked = false
 
 -- Layout constants shared by all panels
-local LABEL_WIDTH    = 140
+local LABEL_WIDTH    = 110
+local DROPDOWN_WIDTH = 225
+local SLIDER_WIDTH   = 200
 local CONTENT_LEFT   = 20
 local CONTENT_TOP    = 15
 local CONTENT_BOTTOM = 20
@@ -50,7 +52,7 @@ local function CreateEditModePanel()
 
     local layoutDropdown = CreateFrame("DropdownButton", "EnhancedCDMLayoutDropdown", row1, "WowStyle1DropdownTemplate")
     layoutDropdown:SetPoint("LEFT", layoutLabel, "RIGHT", 5, 0)
-    layoutDropdown:SetPoint("RIGHT", row1, "RIGHT", 0, 0)
+    layoutDropdown:SetWidth(DROPDOWN_WIDTH)
     layoutDropdown:SetDefaultText(ns.LAYOUT_DISPLAY[db.layout])
     layoutDropdown:SetupMenu(function(owner, rootDescription)
         for _, l in ipairs({ "STATIC", "DYNAMIC" }) do
@@ -59,7 +61,7 @@ local function CreateEditModePanel()
                 function() return ns.db.layout == l end,
                 function()
                     ns.db.layout = l
-                    ns.ApplyLayout()
+                    if ns.ApplyLayout then ns.ApplyLayout() end
                 end,
                 l
             )
@@ -78,27 +80,18 @@ local function CreateEditModePanel()
     perRowLabel:SetJustifyH("LEFT")
     perRowLabel:SetText("Icons Per Row")
 
-    local perRowValue = row2:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    perRowValue:SetPoint("RIGHT", 0, 0)
-    perRowValue:SetJustifyH("RIGHT")
-    perRowValue:SetText(tostring(db.maxPerRow))
-
     local steppers = CreateFrame("Frame", "EnhancedCDMPerRowStepper", row2, "MinimalSliderWithSteppersTemplate")
     steppers:SetPoint("LEFT", perRowLabel, "RIGHT", 5, 0)
-    steppers:SetPoint("RIGHT", perRowValue, "LEFT", -8, 0)
+    steppers:SetWidth(SLIDER_WIDTH)
     steppers:SetHeight(17)
-
-    local slider = steppers.Slider
-    slider:SetMinMaxValues(1, 40)
-    slider:SetValueStep(1)
-    slider:SetObeyStepOnDrag(true)
-    slider:SetValue(db.maxPerRow)
-    slider:SetScript("OnValueChanged", function(self, value)
+    local fmt = {}
+    fmt[MinimalSliderWithSteppersMixin.Label.Right] = CreateMinimalSliderFormatter(MinimalSliderWithSteppersMixin.Label.Right)
+    steppers:Init(db.maxPerRow, 1, 40, 39, fmt)
+    steppers:RegisterCallback("OnValueChanged", function(_, value)
         value = math.floor(value + 0.5)
         ns.db.maxPerRow = value
-        perRowValue:SetText(tostring(value))
-        ns.ApplyLayout()
-    end)
+        if ns.ApplyLayout then ns.ApplyLayout() end
+    end, steppers)
 
     -- Row 3: Icons Growth Direction
     local row3 = CreateFrame("Frame", nil, f)
@@ -114,7 +107,7 @@ local function CreateEditModePanel()
 
     local dropdown = CreateFrame("DropdownButton", "EnhancedCDMGrowDropdown", row3, "WowStyle1DropdownTemplate")
     dropdown:SetPoint("LEFT", growLabel, "RIGHT", 5, 0)
-    dropdown:SetPoint("RIGHT", row3, "RIGHT", 0, 0)
+    dropdown:SetWidth(DROPDOWN_WIDTH)
     dropdown:SetDefaultText(ns.DIRECTION_DISPLAY[db.growDirection])
     dropdown:SetupMenu(function(owner, rootDescription)
         for _, dir in ipairs({ "DOWN", "UP" }) do
@@ -123,7 +116,7 @@ local function CreateEditModePanel()
                 function() return ns.db.growDirection == dir end,
                 function()
                     ns.db.growDirection = dir
-                    ns.ApplyLayout()
+                    if ns.ApplyLayout then ns.ApplyLayout() end
                 end,
                 dir
             )
@@ -144,7 +137,7 @@ local function CreateEditModePanel()
 
     local alignDropdown = CreateFrame("DropdownButton", "EnhancedCDMAlignDropdown", row4, "WowStyle1DropdownTemplate")
     alignDropdown:SetPoint("LEFT", alignLabel, "RIGHT", 5, 0)
-    alignDropdown:SetPoint("RIGHT", row4, "RIGHT", 0, 0)
+    alignDropdown:SetWidth(DROPDOWN_WIDTH)
     alignDropdown:SetDefaultText(ns.ALIGN_DISPLAY[db.align])
     alignDropdown:SetupMenu(function(owner, rootDescription)
         for _, a in ipairs({ "LEFT", "CENTER", "RIGHT" }) do
@@ -153,14 +146,13 @@ local function CreateEditModePanel()
                 function() return ns.db.align == a end,
                 function()
                     ns.db.align = a
-                    ns.ApplyLayout()
+                    if ns.ApplyLayout then ns.ApplyLayout() end
                 end,
                 a
             )
         end
     end)
 
-    f.perRowValue = perRowValue
     f.growDropdown = dropdown
     f.alignDropdown = alignDropdown
     f.layoutDropdown = layoutDropdown
@@ -180,9 +172,6 @@ local function RefreshEditModePanel()
     local steppers = _G["EnhancedCDMPerRowStepper"]
     if steppers and steppers.Slider then
         steppers.Slider:SetValue(db.maxPerRow)
-    end
-    if editModePanel.perRowValue then
-        editModePanel.perRowValue:SetText(tostring(db.maxPerRow))
     end
     if editModePanel.growDropdown then
         editModePanel.growDropdown:SetDefaultText(ns.DIRECTION_DISPLAY[db.growDirection])
@@ -263,7 +252,7 @@ local function CreateBarsEditModePanel()
 
     local orientDropdown = CreateFrame("DropdownButton", "EnhancedCDMBarsOrientDropdown", row1, "WowStyle1DropdownTemplate")
     orientDropdown:SetPoint("LEFT", orientLabel, "RIGHT", 5, 0)
-    orientDropdown:SetPoint("RIGHT", row1, "RIGHT", 0, 0)
+    orientDropdown:SetWidth(DROPDOWN_WIDTH)
     orientDropdown:SetDefaultText(ns.ORIENTATION_DISPLAY[db.bars_orientation])
 
     -- Row 2: Layout
@@ -280,7 +269,7 @@ local function CreateBarsEditModePanel()
 
     local layoutDropdown = CreateFrame("DropdownButton", "EnhancedCDMBarsLayoutDropdown", row2, "WowStyle1DropdownTemplate")
     layoutDropdown:SetPoint("LEFT", layoutLabel, "RIGHT", 5, 0)
-    layoutDropdown:SetPoint("RIGHT", row2, "RIGHT", 0, 0)
+    layoutDropdown:SetWidth(DROPDOWN_WIDTH)
     layoutDropdown:SetDefaultText(ns.LAYOUT_DISPLAY[db.bars_layout])
 
     -- Row 3: Alignment — conditional: visible when layout=DYNAMIC
@@ -295,7 +284,7 @@ local function CreateBarsEditModePanel()
 
     local alignDropdown = CreateFrame("DropdownButton", "EnhancedCDMBarsAlignDropdown", row3, "WowStyle1DropdownTemplate")
     alignDropdown:SetPoint("LEFT", alignLabel, "RIGHT", 5, 0)
-    alignDropdown:SetPoint("RIGHT", row3, "RIGHT", 0, 0)
+    alignDropdown:SetWidth(DROPDOWN_WIDTH)
 
     -- Row 4: Bars Per Row — conditional: visible when orientation=HORIZONTAL
     local row4 = CreateFrame("Frame", nil, f)
@@ -307,27 +296,18 @@ local function CreateBarsEditModePanel()
     perRowLabel:SetJustifyH("LEFT")
     perRowLabel:SetText("Bars Per Row")
 
-    local perRowValue = row4:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    perRowValue:SetPoint("RIGHT", 0, 0)
-    perRowValue:SetJustifyH("RIGHT")
-    perRowValue:SetText(tostring(db.bars_maxPerRow))
-
     local steppers = CreateFrame("Frame", "EnhancedCDMBarsPerRowStepper", row4, "MinimalSliderWithSteppersTemplate")
     steppers:SetPoint("LEFT", perRowLabel, "RIGHT", 5, 0)
-    steppers:SetPoint("RIGHT", perRowValue, "LEFT", -8, 0)
+    steppers:SetWidth(SLIDER_WIDTH)
     steppers:SetHeight(17)
-
-    local slider = steppers.Slider
-    slider:SetMinMaxValues(1, 8)
-    slider:SetValueStep(1)
-    slider:SetObeyStepOnDrag(true)
-    slider:SetValue(db.bars_maxPerRow)
-    slider:SetScript("OnValueChanged", function(self, value)
+    local fmt = {}
+    fmt[MinimalSliderWithSteppersMixin.Label.Right] = CreateMinimalSliderFormatter(MinimalSliderWithSteppersMixin.Label.Right)
+    steppers:Init(db.bars_maxPerRow, 1, 8, 7, fmt)
+    steppers:RegisterCallback("OnValueChanged", function(_, value)
         value = math.floor(value + 0.5)
         ns.db.bars_maxPerRow = value
-        perRowValue:SetText(tostring(value))
         if ns.ApplyBarsLayout then ns.ApplyBarsLayout() end
-    end)
+    end, steppers)
 
     -- Forward-declared update function
     local UpdateBarsPanel
@@ -405,10 +385,15 @@ local function CreateBarsEditModePanel()
         -- Update dropdown texts
         orientDropdown:SetDefaultText(ns.ORIENTATION_DISPLAY[ns.db.bars_orientation])
         layoutDropdown:SetDefaultText(ns.LAYOUT_DISPLAY[ns.db.bars_layout])
+        local alignText
         if ns.db.bars_orientation == "VERTICAL" then
-            alignDropdown:SetDefaultText(ns.BAR_ALIGN_V_DISPLAY[ns.db.bars_align])
+            alignText = ns.BAR_ALIGN_V_DISPLAY[ns.db.bars_align] or "Down"
         else
-            alignDropdown:SetDefaultText(ns.BAR_ALIGN_H_DISPLAY[ns.db.bars_align])
+            alignText = ns.BAR_ALIGN_H_DISPLAY[ns.db.bars_align] or "Center"
+        end
+        alignDropdown:SetDefaultText(alignText)
+        if alignDropdown.Text then
+            alignDropdown.Text:SetText(alignText)
         end
 
         -- Update slider
@@ -416,7 +401,6 @@ local function CreateBarsEditModePanel()
         if barsSteppers and barsSteppers.Slider then
             barsSteppers.Slider:SetValue(ns.db.bars_maxPerRow)
         end
-        perRowValue:SetText(tostring(ns.db.bars_maxPerRow))
 
         -- Dynamic row anchoring
         local visibleRows = 2 -- orientation + layout always visible
@@ -523,19 +507,45 @@ local function CreateHotkeysPanelForViewer(frameName, titleText, prefix)
     shortenLabel:SetJustifyH("LEFT")
     shortenLabel:SetText("Shorten Keybinds Text")
 
-    -- Row 3: Position — conditional: visible when show=true
+    -- Row 3: Font Size — conditional: visible when show=true
     local row3 = CreateFrame("Frame", nil, f)
     row3:SetHeight(ROW_HEIGHT)
 
-    local posLabel = row3:CreateFontString(nil, "OVERLAY", "GameFontHighlightMedium")
+    local fontLabel = row3:CreateFontString(nil, "OVERLAY", "GameFontHighlightMedium")
+    fontLabel:SetPoint("LEFT", 0, 0)
+    fontLabel:SetWidth(LABEL_WIDTH)
+    fontLabel:SetJustifyH("LEFT")
+    fontLabel:SetText("Font Size")
+
+    local stepperName = frameName .. "FontStepper"
+    local fontSteppers = CreateFrame("Frame", stepperName, row3, "MinimalSliderWithSteppersTemplate")
+    fontSteppers:SetPoint("LEFT", fontLabel, "RIGHT", 5, 0)
+    fontSteppers:SetWidth(SLIDER_WIDTH)
+    fontSteppers:SetHeight(17)
+    local fontFmt = {}
+    fontFmt[MinimalSliderWithSteppersMixin.Label.Right] = CreateMinimalSliderFormatter(MinimalSliderWithSteppersMixin.Label.Right)
+    fontSteppers:Init(db[prefix .. "fontSize"], 6, 32, 26, fontFmt)
+    fontSteppers:RegisterCallback("OnValueChanged", function(_, value)
+        value = math.floor(value + 0.5)
+        ns.db[prefix .. "fontSize"] = value
+        if ns.RefreshAllHotkeys then ns.RefreshAllHotkeys() end
+    end, fontSteppers)
+
+    -- Row 4: Position — conditional: visible when show=true
+    local row4 = CreateFrame("Frame", nil, f)
+    row4:SetHeight(ROW_HEIGHT)
+
+    local posLabel = row4:CreateFontString(nil, "OVERLAY", "GameFontHighlightMedium")
     posLabel:SetPoint("LEFT", 0, 0)
     posLabel:SetWidth(LABEL_WIDTH)
     posLabel:SetJustifyH("LEFT")
     posLabel:SetText("Position")
 
-    local posDropdown = CreateFrame("DropdownButton", frameName .. "PosDropdown", row3, "WowStyle1DropdownTemplate")
+    local posDropdown = CreateFrame("DropdownButton", frameName .. "PosDropdown", row4, "WowStyle1DropdownTemplate")
     posDropdown:SetPoint("LEFT", posLabel, "RIGHT", 5, 0)
-    posDropdown:SetPoint("RIGHT", row3, "RIGHT", 0, 0)
+    posDropdown:SetWidth(DROPDOWN_WIDTH)
+
+    local UpdatePanel
 
     posDropdown:SetupMenu(function(owner, rootDescription)
         for _, pos in ipairs(POSITION_ORDER) do
@@ -544,47 +554,66 @@ local function CreateHotkeysPanelForViewer(frameName, titleText, prefix)
                 function() return ns.db[prefix .. "position"] == pos end,
                 function()
                     ns.db[prefix .. "position"] = pos
+                    local anchor = ns.HOTKEY_POSITION_ANCHORS[pos]
+                    if anchor then
+                        ns.db[prefix .. "offsetX"] = anchor.x
+                        ns.db[prefix .. "offsetY"] = anchor.y
+                    end
                     if ns.RefreshAllHotkeys then ns.RefreshAllHotkeys() end
+                    UpdatePanel()
                 end,
                 pos
             )
         end
     end)
 
-    -- Row 4: Font Size — conditional: visible when show=true
-    local row4 = CreateFrame("Frame", nil, f)
-    row4:SetHeight(ROW_HEIGHT)
+    -- Row 5: Horizontal Offset — conditional: visible when show=true
+    local row5 = CreateFrame("Frame", nil, f)
+    row5:SetHeight(ROW_HEIGHT)
 
-    local fontLabel = row4:CreateFontString(nil, "OVERLAY", "GameFontHighlightMedium")
-    fontLabel:SetPoint("LEFT", 0, 0)
-    fontLabel:SetWidth(LABEL_WIDTH)
-    fontLabel:SetJustifyH("LEFT")
-    fontLabel:SetText("Font Size")
+    local offsetXLabel = row5:CreateFontString(nil, "OVERLAY", "GameFontHighlightMedium")
+    offsetXLabel:SetPoint("LEFT", 0, 0)
+    offsetXLabel:SetWidth(LABEL_WIDTH)
+    offsetXLabel:SetJustifyH("LEFT")
+    offsetXLabel:SetText("Horizontal")
 
-    local fontValue = row4:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    fontValue:SetPoint("RIGHT", 0, 0)
-    fontValue:SetJustifyH("RIGHT")
-    fontValue:SetText(tostring(db[prefix .. "fontSize"]))
-
-    local stepperName = frameName .. "FontStepper"
-    local fontSteppers = CreateFrame("Frame", stepperName, row4, "MinimalSliderWithSteppersTemplate")
-    fontSteppers:SetPoint("LEFT", fontLabel, "RIGHT", 5, 0)
-    fontSteppers:SetPoint("RIGHT", fontValue, "LEFT", -8, 0)
-    fontSteppers:SetHeight(17)
-
-    local fontSlider = fontSteppers.Slider
-    fontSlider:SetMinMaxValues(8, 20)
-    fontSlider:SetValueStep(1)
-    fontSlider:SetObeyStepOnDrag(true)
-    fontSlider:SetValue(db[prefix .. "fontSize"])
-    fontSlider:SetScript("OnValueChanged", function(self, value)
+    local offsetXStepperName = frameName .. "OffsetXStepper"
+    local offsetXSteppers = CreateFrame("Frame", offsetXStepperName, row5, "MinimalSliderWithSteppersTemplate")
+    offsetXSteppers:SetPoint("LEFT", offsetXLabel, "RIGHT", 5, 0)
+    offsetXSteppers:SetWidth(SLIDER_WIDTH)
+    offsetXSteppers:SetHeight(17)
+    local oxFmt = {}
+    oxFmt[MinimalSliderWithSteppersMixin.Label.Right] = CreateMinimalSliderFormatter(MinimalSliderWithSteppersMixin.Label.Right)
+    offsetXSteppers:Init(db[prefix .. "offsetX"], -40, 40, 80, oxFmt)
+    offsetXSteppers:RegisterCallback("OnValueChanged", function(_, value)
         value = math.floor(value + 0.5)
-        ns.db[prefix .. "fontSize"] = value
-        fontValue:SetText(tostring(value))
+        ns.db[prefix .. "offsetX"] = value
         if ns.RefreshAllHotkeys then ns.RefreshAllHotkeys() end
-    end)
+    end, offsetXSteppers)
 
-    local UpdatePanel
+    -- Row 6: Vertical Offset — conditional: visible when show=true
+    local row6 = CreateFrame("Frame", nil, f)
+    row6:SetHeight(ROW_HEIGHT)
+
+    local offsetYLabel = row6:CreateFontString(nil, "OVERLAY", "GameFontHighlightMedium")
+    offsetYLabel:SetPoint("LEFT", 0, 0)
+    offsetYLabel:SetWidth(LABEL_WIDTH)
+    offsetYLabel:SetJustifyH("LEFT")
+    offsetYLabel:SetText("Vertical")
+
+    local offsetYStepperName = frameName .. "OffsetYStepper"
+    local offsetYSteppers = CreateFrame("Frame", offsetYStepperName, row6, "MinimalSliderWithSteppersTemplate")
+    offsetYSteppers:SetPoint("LEFT", offsetYLabel, "RIGHT", 5, 0)
+    offsetYSteppers:SetWidth(SLIDER_WIDTH)
+    offsetYSteppers:SetHeight(17)
+    local oyFmt = {}
+    oyFmt[MinimalSliderWithSteppersMixin.Label.Right] = CreateMinimalSliderFormatter(MinimalSliderWithSteppersMixin.Label.Right)
+    offsetYSteppers:Init(db[prefix .. "offsetY"], -40, 40, 80, oyFmt)
+    offsetYSteppers:RegisterCallback("OnValueChanged", function(_, value)
+        value = math.floor(value + 0.5)
+        ns.db[prefix .. "offsetY"] = value
+        if ns.RefreshAllHotkeys then ns.RefreshAllHotkeys() end
+    end, offsetYSteppers)
 
     checkbox:SetScript("OnClick", function(self)
         ns.db[prefix .. "show"] = self:GetChecked()
@@ -602,13 +631,22 @@ local function CreateHotkeysPanelForViewer(frameName, titleText, prefix)
         checkbox:SetChecked(showHotkeys)
         shortenCheckbox:SetChecked(ns.db[prefix .. "shorten"])
 
+        local fSteppers = _G[stepperName]
+        if fSteppers and fSteppers.Slider then
+            fSteppers.Slider:SetValue(ns.db[prefix .. "fontSize"])
+        end
+
         posDropdown:SetDefaultText(ns.HOTKEY_POSITION_DISPLAY[ns.db[prefix .. "position"]])
 
-        local steppers = _G[stepperName]
-        if steppers and steppers.Slider then
-            steppers.Slider:SetValue(ns.db[prefix .. "fontSize"])
+        local oxSteppers = _G[offsetXStepperName]
+        if oxSteppers and oxSteppers.Slider then
+            oxSteppers.Slider:SetValue(ns.db[prefix .. "offsetX"])
         end
-        fontValue:SetText(tostring(ns.db[prefix .. "fontSize"]))
+
+        local oySteppers = _G[offsetYStepperName]
+        if oySteppers and oySteppers.Slider then
+            oySteppers.Slider:SetValue(ns.db[prefix .. "offsetY"])
+        end
 
         local visibleRows = 1
         local lastRow = row1
@@ -632,11 +670,27 @@ local function CreateHotkeysPanelForViewer(frameName, titleText, prefix)
             row4:SetPoint("TOPLEFT", lastRow, "BOTTOMLEFT", 0, 0)
             row4:SetPoint("TOPRIGHT", lastRow, "BOTTOMRIGHT", 0, 0)
             row4:Show()
+            lastRow = row4
+            visibleRows = visibleRows + 1
+
+            row5:ClearAllPoints()
+            row5:SetPoint("TOPLEFT", lastRow, "BOTTOMLEFT", 0, 0)
+            row5:SetPoint("TOPRIGHT", lastRow, "BOTTOMRIGHT", 0, 0)
+            row5:Show()
+            lastRow = row5
+            visibleRows = visibleRows + 1
+
+            row6:ClearAllPoints()
+            row6:SetPoint("TOPLEFT", lastRow, "BOTTOMLEFT", 0, 0)
+            row6:SetPoint("TOPRIGHT", lastRow, "BOTTOMRIGHT", 0, 0)
+            row6:Show()
             visibleRows = visibleRows + 1
         else
             row2:Hide()
             row3:Hide()
             row4:Hide()
+            row5:Hide()
+            row6:Hide()
         end
 
         f:SetHeight(titleBottom + (ROW_HEIGHT * visibleRows) + CONTENT_BOTTOM)

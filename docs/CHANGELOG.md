@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.8.0] - 2026-03-03
+
+### Added
+- **Horizontal/Vertical offset sliders** for Essential and Utility hotkey text positioning
+  - Fine-tune keybind text placement with -40 to +40 pixel offsets per axis
+  - Offsets reset to position defaults when Position is changed
+  - Sliders conditional on "Show Keybinds" being enabled
+- `/ecdm essential offsetx` and `/ecdm essential offsety` slash commands (same for utility)
+
+### Changed
+- Edit Mode hotkey panels reordered: Show → Shorten → Font Size → Position → Horizontal → Vertical
+- Font size range expanded to 6–32 (was 8–20)
+- Offset range expanded to -40..40 (was -20..20)
+
+### Fixed
+- Slider width jitter when value text changes — value labels now use fixed width
+
 ## [0.7.0] - 2026-03-03
 
 ### Added

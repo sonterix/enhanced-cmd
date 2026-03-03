@@ -7,7 +7,9 @@ describe("Config defaults", function()
             "maxPerRow", "growDirection", "align", "layout",
             "bars_orientation", "bars_layout", "bars_align", "bars_maxPerRow",
             "essential_hotkeys_show", "essential_hotkeys_position", "essential_hotkeys_fontSize", "essential_hotkeys_shorten",
+            "essential_hotkeys_offsetX", "essential_hotkeys_offsetY",
             "utility_hotkeys_show", "utility_hotkeys_position", "utility_hotkeys_fontSize", "utility_hotkeys_shorten",
+            "utility_hotkeys_offsetX", "utility_hotkeys_offsetY",
         }
         for _, key in ipairs(expected) do
             expect(ns.DEFAULTS[key] ~= nil).to_be_truthy()
@@ -21,6 +23,14 @@ describe("Config defaults", function()
         expect(ns.DEFAULTS.layout).to_equal("STATIC")
         expect(ns.DEFAULTS.essential_hotkeys_show).to_equal(false)
         expect(ns.DEFAULTS.utility_hotkeys_show).to_equal(false)
+    end)
+
+    it("offset defaults match TOPLEFT anchor values", function()
+        local anchor = ns.HOTKEY_POSITION_ANCHORS["TOPLEFT"]
+        expect(ns.DEFAULTS.essential_hotkeys_offsetX).to_equal(anchor.x)
+        expect(ns.DEFAULTS.essential_hotkeys_offsetY).to_equal(anchor.y)
+        expect(ns.DEFAULTS.utility_hotkeys_offsetX).to_equal(anchor.x)
+        expect(ns.DEFAULTS.utility_hotkeys_offsetY).to_equal(anchor.y)
     end)
 end)
 

@@ -189,9 +189,12 @@ local function UpdateFrameHotkey(frame)
         or ns.HOTKEY_POSITION_ANCHORS["TOPLEFT"]
     local justify = ns.HOTKEY_POSITION_JUSTIFY[position] or "LEFT"
 
+    local offsetX = db[prefix .. "offsetX"]
+    local offsetY = db[prefix .. "offsetY"]
+
     fs:SetFont("Fonts\\ARIALN.TTF", fontSize, "OUTLINE")
     fs:ClearAllPoints()
-    fs:SetPoint(anchor.point, frame, anchor.point, anchor.x, anchor.y)
+    fs:SetPoint(anchor.point, frame, anchor.point, offsetX, offsetY)
     fs:SetJustifyH(justify)
     fs:SetText(text)
     fs:Show()
@@ -875,6 +878,11 @@ local function RegisterSlashCommands()
                 local pos = subArg:upper()
                 if ns.HOTKEY_POSITION_DISPLAY[pos] then
                     db[prefix .. "position"] = pos
+                    local anchor = ns.HOTKEY_POSITION_ANCHORS[pos]
+                    if anchor then
+                        db[prefix .. "offsetX"] = anchor.x
+                        db[prefix .. "offsetY"] = anchor.y
+                    end
                     print("|cff00ccffEnhanced CDM:|r " .. label .. " hotkey position set to " .. ns.HOTKEY_POSITION_DISPLAY[pos])
                     RefreshAllHotkeys()
                 else
@@ -882,12 +890,12 @@ local function RegisterSlashCommands()
                 end
             elseif subCmd == "fontsize" or subCmd == "size" then
                 local n = tonumber(subArg)
-                if n and n >= 8 and n <= 20 then
+                if n and n >= 6 and n <= 32 then
                     db[prefix .. "fontSize"] = math.floor(n)
                     print("|cff00ccffEnhanced CDM:|r " .. label .. " hotkey font size set to " .. db[prefix .. "fontSize"])
                     RefreshAllHotkeys()
                 else
-                    print("|cff00ccffEnhanced CDM:|r Usage: /ecdm " .. cmd .. " fontsize <8-20>")
+                    print("|cff00ccffEnhanced CDM:|r Usage: /ecdm " .. cmd .. " fontsize <6-32>")
                 end
             elseif subCmd == "shorten" then
                 db[prefix .. "shorten"] = true
@@ -897,17 +905,37 @@ local function RegisterSlashCommands()
                 db[prefix .. "shorten"] = false
                 print("|cff00ccffEnhanced CDM:|r " .. label .. " hotkey text shortening disabled")
                 RefreshAllHotkeys()
+            elseif subCmd == "offsetx" then
+                local n = tonumber(subArg)
+                if n and n >= -40 and n <= 40 then
+                    db[prefix .. "offsetX"] = math.floor(n)
+                    print("|cff00ccffEnhanced CDM:|r " .. label .. " hotkey horizontal offset set to " .. db[prefix .. "offsetX"])
+                    RefreshAllHotkeys()
+                else
+                    print("|cff00ccffEnhanced CDM:|r Usage: /ecdm " .. cmd .. " offsetx <-40 to 40>")
+                end
+            elseif subCmd == "offsety" then
+                local n = tonumber(subArg)
+                if n and n >= -40 and n <= 40 then
+                    db[prefix .. "offsetY"] = math.floor(n)
+                    print("|cff00ccffEnhanced CDM:|r " .. label .. " hotkey vertical offset set to " .. db[prefix .. "offsetY"])
+                    RefreshAllHotkeys()
+                else
+                    print("|cff00ccffEnhanced CDM:|r Usage: /ecdm " .. cmd .. " offsety <-40 to 40>")
+                end
             else
                 local showText = db[prefix .. "show"] and "Shown" or "Hidden"
                 local posText = ns.HOTKEY_POSITION_DISPLAY[db[prefix .. "position"]] or db[prefix .. "position"]
                 local shortenText = db[prefix .. "shorten"] and "Shortened" or "Full"
-                print("|cff00ccffEnhanced CDM — " .. label .. " Hotkeys:|r " .. showText .. ", position " .. posText .. ", font size " .. db[prefix .. "fontSize"] .. ", text " .. shortenText)
+                print("|cff00ccffEnhanced CDM — " .. label .. " Hotkeys:|r " .. showText .. ", position " .. posText .. ", font size " .. db[prefix .. "fontSize"] .. ", text " .. shortenText .. ", offset " .. db[prefix .. "offsetX"] .. "," .. db[prefix .. "offsetY"])
                 print("  /ecdm " .. cmd .. " show              - Show keybinds")
                 print("  /ecdm " .. cmd .. " hide              - Hide keybinds")
                 print("  /ecdm " .. cmd .. " position <pos>    - Set position")
-                print("  /ecdm " .. cmd .. " fontsize <8-20>   - Set font size")
+                print("  /ecdm " .. cmd .. " fontsize <6-32>   - Set font size")
                 print("  /ecdm " .. cmd .. " shorten           - Shorten keybind text")
                 print("  /ecdm " .. cmd .. " noshorten         - Show full keybind text")
+                print("  /ecdm " .. cmd .. " offsetx <-40..40> - Horizontal offset")
+                print("  /ecdm " .. cmd .. " offsety <-40..40> - Vertical offset")
             end
         elseif cmd == "bars" then
             local subCmd, subArg = arg:match("^(%S+)%s*(.*)")
@@ -990,11 +1018,11 @@ local function RegisterSlashCommands()
             local eShow = db.essential_hotkeys_show and "Shown" or "Hidden"
             local ePos = ns.HOTKEY_POSITION_DISPLAY[db.essential_hotkeys_position] or db.essential_hotkeys_position
             local eShorten = db.essential_hotkeys_shorten and "Shortened" or "Full"
-            print("  Essential: " .. eShow .. ", position " .. ePos .. ", font size " .. db.essential_hotkeys_fontSize .. ", text " .. eShorten)
+            print("  Essential: " .. eShow .. ", position " .. ePos .. ", font size " .. db.essential_hotkeys_fontSize .. ", text " .. eShorten .. ", offset " .. db.essential_hotkeys_offsetX .. "," .. db.essential_hotkeys_offsetY)
             local uShow = db.utility_hotkeys_show and "Shown" or "Hidden"
             local uPos = ns.HOTKEY_POSITION_DISPLAY[db.utility_hotkeys_position] or db.utility_hotkeys_position
             local uShorten = db.utility_hotkeys_shorten and "Shortened" or "Full"
-            print("  Utility:   " .. uShow .. ", position " .. uPos .. ", font size " .. db.utility_hotkeys_fontSize .. ", text " .. uShorten)
+            print("  Utility:   " .. uShow .. ", position " .. uPos .. ", font size " .. db.utility_hotkeys_fontSize .. ", text " .. uShorten .. ", offset " .. db.utility_hotkeys_offsetX .. "," .. db.utility_hotkeys_offsetY)
             print("  /ecdm rows <1-40>               - Icons per row")
             print("  /ecdm grow <up|down>             - Row growth direction")
             print("  /ecdm align <left|center|right>  - Row alignment")
