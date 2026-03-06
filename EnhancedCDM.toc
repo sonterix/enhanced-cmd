@@ -2,7 +2,7 @@
 ## Title: Enhanced CDM
 ## Notes: Multi-row layout for the Cooldown Manager aura tracker
 ## Author: Sonterix
-## Version: 0.10.0
+## Version: 0.11.0
 ## SavedVariables: EnhancedCDMDB
 
 src\Config.lua

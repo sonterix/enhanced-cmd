@@ -19,6 +19,11 @@ local DIVIDER_GAP    = 28
 
 local POSITION_ORDER = { "TOPLEFT", "TOP", "TOPRIGHT", "RIGHT", "BOTTOMRIGHT", "BOTTOM", "BOTTOMLEFT", "LEFT", "CENTER" }
 
+-- Embed-into-dialog constants
+local EMBED_COL_WIDTH = 380
+local activeEmbeddedPanel = nil
+local wrapperFrame = nil
+
 -- ---------------------------------------------------------------------------
 -- Panel creation — builds the settings panel (slider + 3 dropdowns)
 -- ---------------------------------------------------------------------------
@@ -33,6 +38,7 @@ local function CreateEditModePanel()
     f:SetFrameStrata("DIALOG")
     local border = CreateFrame("Frame", nil, f, "DialogBorderTranslucentTemplate")
     border:SetAllPoints(f)
+    f._border = border
     f:Hide()
 
     local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
@@ -335,29 +341,113 @@ local function RefreshEditModePanel()
     if bsoyS and bsoyS.Slider then bsoyS.Slider:SetValue(db.buffs_stacks_offsetY) end
 end
 
--- Anchors a panel to the left of Blizzard's settings dialog, or falls back
--- to the viewer / screen top. Shared by all four Show* functions.
-local function AnchorPanelToDialog(panel, fallbackViewer)
-    local blizzDialog = _G["EditModeSystemSettingsDialog"]
-    if blizzDialog and blizzDialog:IsShown() then
-        panel:SetFrameLevel(blizzDialog:GetFrameLevel())
-        panel:SetWidth(blizzDialog:GetWidth())
-        panel:ClearAllPoints()
-        panel:SetPoint("TOPRIGHT", blizzDialog, "TOPLEFT", -4, 0)
-    elseif fallbackViewer then
-        panel:ClearAllPoints()
-        panel:SetPoint("BOTTOM", fallbackViewer, "TOP", 0, 8)
-    else
+-- Hides the Blizzard dialog's border/background.
+-- DialogBorderTranslucentTemplate applies a NineSlice directly on the frame,
+-- and may also use a child frame with its own NineSlice.
+local function HideDialogBorder(dialog)
+    if dialog.Border then dialog.Border:Hide() end
+end
+
+-- Restores the Blizzard dialog's border/background.
+local function ShowDialogBorder(dialog)
+    if dialog.Border then dialog.Border:Show() end
+end
+
+-- Embeds a panel as the LEFT column beside Blizzard's settings dialog.
+-- Both panels become borderless; a shared wrapper provides the unified border.
+-- Falls back to standalone positioning if the dialog is unavailable.
+local function EmbedPanelInDialog(panel)
+    local dialog = _G["EditModeSystemSettingsDialog"]
+    if not dialog or not dialog:IsShown() then
+        -- Fallback: show standalone
+        if panel._border then panel._border:Show() end
+        if panel._ecdmDivider then panel._ecdmDivider:Hide() end
+        panel:SetParent(UIParent)
+        panel:SetFrameStrata("DIALOG")
         panel:ClearAllPoints()
         panel:SetPoint("TOP", UIParent, "TOP", 0, -100)
+        panel:Show()
+        return
+    end
+
+    -- Hide panel's own border
+    if panel._border then panel._border:Hide() end
+
+    -- Hide Blizzard dialog's border/background
+    HideDialogBorder(dialog)
+
+    -- Create or reuse the wrapper frame that provides the shared border
+    if not wrapperFrame then
+        wrapperFrame = CreateFrame("Frame", "EnhancedCDMWrapperFrame", UIParent)
+        wrapperFrame:EnableMouse(false)
+        wrapperFrame:SetFrameStrata("DIALOG")
+        local wrapBorder = CreateFrame("Frame", nil, wrapperFrame, "DialogBorderTranslucentTemplate")
+        wrapBorder:SetAllPoints(wrapperFrame)
+        wrapperFrame._border = wrapBorder
+    end
+
+    -- Position panel to the LEFT of dialog, matching its height
+    panel:SetParent(UIParent)
+    panel:SetFrameStrata("DIALOG")
+    panel:ClearAllPoints()
+    panel:SetPoint("TOPRIGHT", dialog, "TOPLEFT", 0, 0)
+    panel:SetPoint("BOTTOMRIGHT", dialog, "BOTTOMLEFT", 0, 0)
+    panel:SetWidth(EMBED_COL_WIDTH)
+    panel:Show()
+
+    -- Ensure panel content renders above the wrapper background
+    panel:SetFrameLevel(dialog:GetFrameLevel() + 1)
+
+    -- Position wrapper to span both panel (left) and dialog (right)
+    wrapperFrame:SetFrameLevel(dialog:GetFrameLevel() - 1)
+    wrapperFrame:ClearAllPoints()
+    wrapperFrame:SetPoint("TOPLEFT", panel, "TOPLEFT", 0, 0)
+    wrapperFrame:SetPoint("BOTTOMRIGHT", dialog, "BOTTOMRIGHT", 0, 0)
+    wrapperFrame:Show()
+
+    -- Vertical divider between columns (on panel's right edge)
+    if not panel._ecdmDivider then
+        panel._ecdmDivider = panel:CreateTexture(nil, "OVERLAY")
+        panel._ecdmDivider:SetWidth(1)
+        panel._ecdmDivider:SetColorTexture(1, 1, 1, 0.15)
+    end
+    panel._ecdmDivider:ClearAllPoints()
+    panel._ecdmDivider:SetPoint("TOPRIGHT", panel, "TOPRIGHT", 0, -10)
+    panel._ecdmDivider:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", 0, 10)
+    panel._ecdmDivider:Show()
+
+    activeEmbeddedPanel = panel
+end
+
+-- Removes the embedded panel and restores the dialog's original border.
+local function UnembedPanel()
+    if activeEmbeddedPanel then
+        activeEmbeddedPanel:Hide()
+        activeEmbeddedPanel:SetParent(UIParent)
+        activeEmbeddedPanel:SetFrameStrata("DIALOG")
+        if activeEmbeddedPanel._border then
+            activeEmbeddedPanel._border:Show()
+        end
+        if activeEmbeddedPanel._ecdmDivider then
+            activeEmbeddedPanel._ecdmDivider:Hide()
+        end
+        activeEmbeddedPanel = nil
+    end
+
+    -- Restore Blizzard dialog's border
+    local dialog = _G["EditModeSystemSettingsDialog"]
+    if dialog then ShowDialogBorder(dialog) end
+
+    -- Hide wrapper
+    if wrapperFrame then
+        wrapperFrame:Hide()
     end
 end
 
 local function ShowEnhancedCDMPanel()
     CreateEditModePanel()
     RefreshEditModePanel()
-    AnchorPanelToDialog(editModePanel, ns.viewer)
-    editModePanel:Show()
+    EmbedPanelInDialog(editModePanel)
 end
 
 local function HideEnhancedCDMPanel()
@@ -380,6 +470,7 @@ local function CreateBarsEditModePanel()
     f:SetFrameStrata("DIALOG")
     local border = CreateFrame("Frame", nil, f, "DialogBorderTranslucentTemplate")
     border:SetAllPoints(f)
+    f._border = border
     f:SetWidth(480)
     f:Hide()
 
@@ -597,8 +688,7 @@ local function ShowBarsPanel()
     if barsEditModePanel.UpdateBarsPanel then
         barsEditModePanel.UpdateBarsPanel()
     end
-    AnchorPanelToDialog(barsEditModePanel, ns.barViewer)
-    barsEditModePanel:Show()
+    EmbedPanelInDialog(barsEditModePanel)
 end
 
 local function HideBarsPanel()
@@ -619,6 +709,7 @@ local function CreateHotkeysPanelForViewer(frameName, titleText, prefix)
     f:SetFrameStrata("DIALOG")
     local border = CreateFrame("Frame", nil, f, "DialogBorderTranslucentTemplate")
     border:SetAllPoints(f)
+    f._border = border
     f:SetWidth(480)
     f:Hide()
 
@@ -1036,8 +1127,7 @@ local function ShowEssentialHotkeysPanel()
             "EnhancedCDMEssentialHotkeysPanel", "Enhanced CDM - Essential", "essential_hotkeys_")
     end
     essentialHotkeysPanel.UpdatePanel()
-    AnchorPanelToDialog(essentialHotkeysPanel, ns.essentialViewer)
-    essentialHotkeysPanel:Show()
+    EmbedPanelInDialog(essentialHotkeysPanel)
 end
 
 local function HideEssentialHotkeysPanel()
@@ -1052,8 +1142,7 @@ local function ShowUtilityHotkeysPanel()
             "EnhancedCDMUtilityHotkeysPanel", "Enhanced CDM - Utility", "utility_hotkeys_")
     end
     utilityHotkeysPanel.UpdatePanel()
-    AnchorPanelToDialog(utilityHotkeysPanel, ns.utilityViewer)
-    utilityHotkeysPanel:Show()
+    EmbedPanelInDialog(utilityHotkeysPanel)
 end
 
 local function HideUtilityHotkeysPanel()
@@ -1067,6 +1156,7 @@ end
 -- ---------------------------------------------------------------------------
 
 local function HideAllPanels()
+    UnembedPanel()
     HideEnhancedCDMPanel()
     HideBarsPanel()
     HideEssentialHotkeysPanel()
@@ -1111,20 +1201,28 @@ local function SetupEditMode()
             if ns.ScheduleBarsLayout then ns.ScheduleBarsLayout() end
         end)
 
-        -- Hide the "Icon Direction" setting from Blizzard's dialog for our viewers
+        -- Hide the "Icon Direction" setting when a CDM viewer is selected
         local dialog = _G["EditModeSystemSettingsDialog"]
-        if dialog and dialog.UpdateSettings then
-            hooksecurefunc(dialog, "UpdateSettings", function(self)
-                local buffViewer = _G["BuffIconCooldownViewer"]
-                local buffBarViewer = _G["BuffBarCooldownViewer"]
-                if self.attachedToSystem ~= buffViewer and self.attachedToSystem ~= buffBarViewer then return end
-                local children = { self.Settings:GetChildren() }
-                for _, child in ipairs(children) do
-                    if child.setting == Enum.EditModeCooldownViewerSetting.IconDirection then
-                        child:Hide()
+        if dialog then
+            if dialog.UpdateSettings then
+                hooksecurefunc(dialog, "UpdateSettings", function(self)
+                    local buffViewer = _G["BuffIconCooldownViewer"]
+                    local buffBarViewer = _G["BuffBarCooldownViewer"]
+                    if self.attachedToSystem == buffViewer or self.attachedToSystem == buffBarViewer then
+                        local children = { self.Settings:GetChildren() }
+                        for _, child in ipairs(children) do
+                            if child.setting == Enum.EditModeCooldownViewerSetting.IconDirection then
+                                child:Hide()
+                            end
+                        end
+                        self.Settings:Layout()
                     end
-                end
-                self.Settings:Layout()
+                end)
+            end
+
+            -- Clean up embed state when dialog hides (e.g. close button)
+            dialog:HookScript("OnHide", function()
+                UnembedPanel()
             end)
         end
     end)
