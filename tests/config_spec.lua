@@ -5,7 +5,7 @@ describe("Config defaults", function()
     it("has all expected default keys", function()
         local expected = {
             "maxPerRow", "growDirection", "align", "layout",
-            "bars_orientation", "bars_layout", "bars_align", "bars_maxPerRow",
+            "bars_orientation", "bars_layout", "bars_align", "bars_maxPerRow", "bars_colors",
             "essential_hotkeys_show", "essential_hotkeys_position", "essential_hotkeys_fontSize", "essential_hotkeys_shorten",
             "essential_hotkeys_offsetX", "essential_hotkeys_offsetY",
             "utility_hotkeys_show", "utility_hotkeys_position", "utility_hotkeys_fontSize", "utility_hotkeys_shorten",
@@ -23,6 +23,8 @@ describe("Config defaults", function()
         expect(ns.DEFAULTS.layout).to_equal("STATIC")
         expect(ns.DEFAULTS.essential_hotkeys_show).to_equal(false)
         expect(ns.DEFAULTS.utility_hotkeys_show).to_equal(false)
+        expect(ns.DEFAULTS.bars_colors).to_be_type("table")
+        expect(next(ns.DEFAULTS.bars_colors) == nil).to_be_truthy()
     end)
 
     it("offset defaults match TOPLEFT anchor values", function()
@@ -94,7 +96,11 @@ describe("SavedVariables merge", function()
         -- which sets up EnhancedCDMDB and ns.db
         expect(ns.db ~= nil).to_be_truthy()
         for k, v in pairs(ns.DEFAULTS) do
-            expect(ns.db[k]).to_equal(v)
+            if type(v) == "table" then
+                expect(type(ns.db[k])).to_equal("table")
+            else
+                expect(ns.db[k]).to_equal(v)
+            end
         end
     end)
 end)

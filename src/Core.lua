@@ -78,6 +78,7 @@ local function FormatKeyText(key)
     key = key:gsub("PAGEDOWN", "PD")
     key = key:gsub("SPACEBAR", "SP")
     key = key:gsub("BACKSPACE", "BS")
+    key = key:gsub("SPACE", "SP")
     key = key:gsub("CAPSLOCK", "CAP")
     key = key:gsub("INSERT", "INS")
     key = key:gsub("DELETE", "DEL")
@@ -573,6 +574,48 @@ HookBarFrame = function(frame)
 end
 
 -- ---------------------------------------------------------------------------
+-- Bar gradient engine — per-bar start/end color gradients
+-- ---------------------------------------------------------------------------
+
+local function GetBarStatusBar(barFrame)
+    for _, child in ipairs({ barFrame:GetChildren() }) do
+        if child:GetObjectType() == "StatusBar" then return child end
+    end
+end
+
+local function ApplyBarGradient(barFrame)
+    local statusBar = GetBarStatusBar(barFrame)
+    if not statusBar then return end
+    local tex = statusBar:GetStatusBarTexture()
+    if not tex or not tex.SetGradient then return end
+
+    local colors = db.bars_colors and db.bars_colors[barFrame.cooldownID]
+    if colors then
+        tex:SetGradient("HORIZONTAL",
+            CreateColor(colors.sR, colors.sG, colors.sB, 1),
+            CreateColor(colors.eR, colors.eG, colors.eB, 1))
+    end
+end
+
+local function ResetBarGradient(barFrame)
+    local statusBar = GetBarStatusBar(barFrame)
+    if not statusBar then return end
+    local tex = statusBar:GetStatusBarTexture()
+    if not tex or not tex.SetGradient then return end
+    tex:SetGradient("HORIZONTAL",
+        CreateColor(1, 0.5, 0.25, 1),
+        CreateColor(1, 0.5, 0.25, 1))
+end
+
+local function RefreshAllBarGradients()
+    if not barViewer then return end
+    for _, child in ipairs({ barViewer:GetChildren() }) do
+        if child.cooldownID then ApplyBarGradient(child) end
+    end
+end
+ns.RefreshAllBarGradients = RefreshAllBarGradients
+
+-- ---------------------------------------------------------------------------
 -- Mixin hooks — catch new frames, cooldown changes, and CDM settings updates
 -- ---------------------------------------------------------------------------
 
@@ -588,6 +631,7 @@ local function InstallMixinHooks()
                 ScheduleLayout()
             elseif self == barViewer then
                 HookBarFrame(frame)
+                ApplyBarGradient(frame)
                 ScheduleBarsLayout()
             elseif self == essentialViewer or self == utilityViewer then
                 BuildSlotToBindingMap()
@@ -642,6 +686,7 @@ local function InstallMixinHooks()
                 ScheduleLayout()
                 ScheduleBarsLayout()
                 ScheduleHotkeyRefresh()
+                RefreshAllBarGradients()
             end,
             ADDON_NAME
         )
@@ -686,7 +731,10 @@ end
 
 local function InstallBarsHooks()
     InstallViewerHooks(barHookState, function() return barViewer end,
-        HookBarFrame, ScheduleBarsLayout, ApplyBarsLayout,
+        HookBarFrame, ScheduleBarsLayout, function()
+            ApplyBarsLayout()
+            RefreshAllBarGradients()
+        end,
         "Bar hook installation failed — bars layout disabled.")
 end
 
@@ -993,6 +1041,59 @@ local function RegisterSlashCommands()
                 else
                     print("|cff00ccffEnhanced CDM:|r Usage: /ecdm bars perrow <1-8>")
                 end
+            elseif subCmd == "gradient" then
+                local gradArg = subArg:match("^(%S+)")
+                if not gradArg or gradArg == "" then
+                    print("|cff00ccffEnhanced CDM — Bar Gradients:|r")
+                    if not db.bars_colors or not next(db.bars_colors) then
+                        print("  No gradients set.")
+                    else
+                        for id, c in pairs(db.bars_colors) do
+                            print(string.format("  %d: start(%.2f,%.2f,%.2f) end(%.2f,%.2f,%.2f)",
+                                id, c.sR, c.sG, c.sB, c.eR, c.eG, c.eB))
+                        end
+                    end
+                    print("  /ecdm bars gradient <id> <sR> <sG> <sB> <eR> <eG> <eB>")
+                    print("  /ecdm bars gradient <id> off")
+                    print("  /ecdm bars gradient clear")
+                elseif gradArg == "clear" then
+                    wipe(db.bars_colors)
+                    if barViewer then
+                        for _, child in ipairs({ barViewer:GetChildren() }) do
+                            if child.cooldownID then ResetBarGradient(child) end
+                        end
+                    end
+                    print("|cff00ccffEnhanced CDM:|r All bar gradients cleared")
+                else
+                    local id = tonumber(gradArg)
+                    if not id then
+                        print("|cff00ccffEnhanced CDM:|r Invalid cooldownID")
+                        return
+                    end
+                    local rest = subArg:match("^%S+%s+(.*)")
+                    if rest and rest:lower() == "off" then
+                        db.bars_colors[id] = nil
+                        if barViewer then
+                            for _, child in ipairs({ barViewer:GetChildren() }) do
+                                if child.cooldownID == id then ResetBarGradient(child) end
+                            end
+                        end
+                        print("|cff00ccffEnhanced CDM:|r Gradient removed for " .. id)
+                    elseif rest then
+                        local sR, sG, sB, eR, eG, eB = rest:match("([%d%.]+)%s+([%d%.]+)%s+([%d%.]+)%s+([%d%.]+)%s+([%d%.]+)%s+([%d%.]+)")
+                        sR, sG, sB = tonumber(sR), tonumber(sG), tonumber(sB)
+                        eR, eG, eB = tonumber(eR), tonumber(eG), tonumber(eB)
+                        if sR and sG and sB and eR and eG and eB then
+                            db.bars_colors[id] = { sR=sR, sG=sG, sB=sB, eR=eR, eG=eG, eB=eB }
+                            RefreshAllBarGradients()
+                            print(string.format("|cff00ccffEnhanced CDM:|r Gradient set for %d", id))
+                        else
+                            print("|cff00ccffEnhanced CDM:|r Usage: /ecdm bars gradient <id> <sR> <sG> <sB> <eR> <eG> <eB>")
+                        end
+                    else
+                        print("|cff00ccffEnhanced CDM:|r Usage: /ecdm bars gradient <id> <sR> <sG> <sB> <eR> <eG> <eB>")
+                    end
+                end
             else
                 local orientDisplay = ns.ORIENTATION_DISPLAY[db.bars_orientation]
                 local layoutDisplay = ns.LAYOUT_DISPLAY[db.bars_layout]
@@ -1003,6 +1104,7 @@ local function RegisterSlashCommands()
                 print("  /ecdm bars layout <static|dynamic>")
                 print("  /ecdm bars align <up|down|left|center|right>")
                 print("  /ecdm bars perrow <1-8>")
+                print("  /ecdm bars gradient                          - Bar color gradients")
             end
         else
             print("|cff00ccffEnhanced CDM|r v" .. (VERSION or "?"))

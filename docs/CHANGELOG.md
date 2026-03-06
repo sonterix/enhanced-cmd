@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.9.0] - 2026-03-05
+
+### Added
+- **Per-bar gradient colors** for Tracked Bars — each bar can have its own start/end color gradient
+  - Colors stored per cooldownID in SavedVariables, persist across sessions
+  - Gradient applied via `SetGradient("HORIZONTAL", startColor, endColor)` on the StatusBar texture
+  - Gradients survive combat, ability triggers, CDM settings changes, and loading screens
+- **Color picker options** in bar right-click context menu (Cooldown Settings panel)
+  - "Set Start Color" and "Set End Color" open WoW's native ColorPickerFrame with live preview
+  - "Remove Gradient" option appears when a gradient is configured
+  - Context menu items auto-appear on any bar entry with a cooldownID
+- `/ecdm bars gradient` slash command namespace
+  - `/ecdm bars gradient` — list all configured gradients
+  - `/ecdm bars gradient <id> <sR> <sG> <sB> <eR> <eG> <eB>` — set gradient by cooldownID
+  - `/ecdm bars gradient <id> off` — remove gradient (revert to default orange)
+  - `/ecdm bars gradient clear` — remove all gradients
+
+### Removed
+- Temporary `debugsettings` slash command (investigation tool from development)
+
 ## [0.8.0] - 2026-03-03
 
 ### Added

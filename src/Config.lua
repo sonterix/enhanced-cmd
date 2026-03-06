@@ -11,6 +11,7 @@ ns.DEFAULTS          = {
     bars_layout      = "STATIC",
     bars_align       = "DOWN",
     bars_maxPerRow   = 2,
+    bars_colors      = {},
     essential_hotkeys_show     = false,
     essential_hotkeys_position = "TOPLEFT",
     essential_hotkeys_fontSize = 14,

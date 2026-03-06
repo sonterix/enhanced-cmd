@@ -89,6 +89,11 @@ describe("FormatKeyText", function()
         expect(fmt("CTRL-SPACEBAR")).to_equal("CSP")
     end)
 
+    it("abbreviates SPACE to SP", function()
+        expect(fmt("SPACE")).to_equal("SP")
+        expect(fmt("SHIFT-SPACE")).to_equal("SSP")
+    end)
+
     it("abbreviates BACKSPACE to BS", function()
         expect(fmt("BACKSPACE")).to_equal("BS")
     end)

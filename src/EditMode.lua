@@ -78,7 +78,7 @@ local function CreateEditModePanel()
     perRowLabel:SetPoint("LEFT", 0, 0)
     perRowLabel:SetWidth(LABEL_WIDTH)
     perRowLabel:SetJustifyH("LEFT")
-    perRowLabel:SetText("Icons Per Row")
+    perRowLabel:SetText("Per Row")
 
     local steppers = CreateFrame("Frame", "EnhancedCDMPerRowStepper", row2, "MinimalSliderWithSteppersTemplate")
     steppers:SetPoint("LEFT", perRowLabel, "RIGHT", 5, 0)
@@ -103,7 +103,7 @@ local function CreateEditModePanel()
     growLabel:SetPoint("LEFT", 0, 0)
     growLabel:SetWidth(LABEL_WIDTH)
     growLabel:SetJustifyH("LEFT")
-    growLabel:SetText("Icons Growth")
+    growLabel:SetText("Growth")
 
     local dropdown = CreateFrame("DropdownButton", "EnhancedCDMGrowDropdown", row3, "WowStyle1DropdownTemplate")
     dropdown:SetPoint("LEFT", growLabel, "RIGHT", 5, 0)
@@ -133,7 +133,7 @@ local function CreateEditModePanel()
     alignLabel:SetPoint("LEFT", 0, 0)
     alignLabel:SetWidth(LABEL_WIDTH)
     alignLabel:SetJustifyH("LEFT")
-    alignLabel:SetText("Icons Alignment")
+    alignLabel:SetText("Alignment")
 
     local alignDropdown = CreateFrame("DropdownButton", "EnhancedCDMAlignDropdown", row4, "WowStyle1DropdownTemplate")
     alignDropdown:SetPoint("LEFT", alignLabel, "RIGHT", 5, 0)
@@ -248,7 +248,7 @@ local function CreateBarsEditModePanel()
     orientLabel:SetPoint("LEFT", 0, 0)
     orientLabel:SetWidth(LABEL_WIDTH)
     orientLabel:SetJustifyH("LEFT")
-    orientLabel:SetText("Bars Orientation")
+    orientLabel:SetText("Orientation")
 
     local orientDropdown = CreateFrame("DropdownButton", "EnhancedCDMBarsOrientDropdown", row1, "WowStyle1DropdownTemplate")
     orientDropdown:SetPoint("LEFT", orientLabel, "RIGHT", 5, 0)
@@ -265,7 +265,7 @@ local function CreateBarsEditModePanel()
     layoutLabel:SetPoint("LEFT", 0, 0)
     layoutLabel:SetWidth(LABEL_WIDTH)
     layoutLabel:SetJustifyH("LEFT")
-    layoutLabel:SetText("Bars Layout")
+    layoutLabel:SetText("Layout")
 
     local layoutDropdown = CreateFrame("DropdownButton", "EnhancedCDMBarsLayoutDropdown", row2, "WowStyle1DropdownTemplate")
     layoutDropdown:SetPoint("LEFT", layoutLabel, "RIGHT", 5, 0)
@@ -280,7 +280,7 @@ local function CreateBarsEditModePanel()
     alignLabel:SetPoint("LEFT", 0, 0)
     alignLabel:SetWidth(LABEL_WIDTH)
     alignLabel:SetJustifyH("LEFT")
-    alignLabel:SetText("Bars Alignment")
+    alignLabel:SetText("Alignment")
 
     local alignDropdown = CreateFrame("DropdownButton", "EnhancedCDMBarsAlignDropdown", row3, "WowStyle1DropdownTemplate")
     alignDropdown:SetPoint("LEFT", alignLabel, "RIGHT", 5, 0)
@@ -294,7 +294,7 @@ local function CreateBarsEditModePanel()
     perRowLabel:SetPoint("LEFT", 0, 0)
     perRowLabel:SetWidth(LABEL_WIDTH)
     perRowLabel:SetJustifyH("LEFT")
-    perRowLabel:SetText("Bars Per Row")
+    perRowLabel:SetText("Per Row")
 
     local steppers = CreateFrame("Frame", "EnhancedCDMBarsPerRowStepper", row4, "MinimalSliderWithSteppersTemplate")
     steppers:SetPoint("LEFT", perRowLabel, "RIGHT", 5, 0)
@@ -812,3 +812,173 @@ local function SetupEditMode()
 end
 
 ns.SetupEditMode = SetupEditMode
+
+-- ---------------------------------------------------------------------------
+-- Bar gradient colors — context menu integration for Tracked Bars entries
+-- ---------------------------------------------------------------------------
+
+-- Apply gradient preview to a settings-panel bar entry
+local function ApplySettingsBarPreview(entry)
+    if not entry or not entry.cooldownID then return end
+    local db = ns.db
+    if not db then return end
+    local colors = db.bars_colors and db.bars_colors[entry.cooldownID]
+    for _, child in ipairs({ entry:GetChildren() }) do
+        if child:GetObjectType() == "StatusBar" then
+            local tex = child:GetStatusBarTexture()
+            if tex and tex.SetGradient then
+                if colors then
+                    tex:SetGradient("HORIZONTAL",
+                        CreateColor(colors.sR, colors.sG, colors.sB, 1),
+                        CreateColor(colors.eR, colors.eG, colors.eB, 1))
+                else
+                    tex:SetGradient("HORIZONTAL",
+                        CreateColor(1, 0.5, 0.25, 1),
+                        CreateColor(1, 0.5, 0.25, 1))
+                end
+            end
+            break
+        end
+    end
+end
+
+local function OpenBarColorPicker(id, colorKey, label, settingsEntry)
+    local db = ns.db
+    if not db then return end
+
+    local function ensureColors()
+        if not db.bars_colors[id] then
+            db.bars_colors[id] = { sR=1, sG=0.5, sB=0.25, eR=1, eG=0.5, eB=0.25 }
+        end
+        return db.bars_colors[id]
+    end
+
+    local c = db.bars_colors[id]
+    local rKey = colorKey .. "R"
+    local gKey = colorKey .. "G"
+    local bKey = colorKey .. "B"
+    local r = c and c[rKey] or 1
+    local g = c and c[gKey] or 0.5
+    local b = c and c[bKey] or 0.25
+
+    ColorPickerFrame:SetupColorPickerAndShow({
+        r = r, g = g, b = b,
+        hasOpacity = false,
+        swatchFunc = function()
+            local nr, ng, nb = ColorPickerFrame:GetColorRGB()
+            local colors = ensureColors()
+            colors[rKey], colors[gKey], colors[bKey] = nr, ng, nb
+            if ns.RefreshAllBarGradients then ns.RefreshAllBarGradients() end
+            ApplySettingsBarPreview(settingsEntry)
+        end,
+        cancelFunc = function(prev)
+            local colors = ensureColors()
+            colors[rKey], colors[gKey], colors[bKey] = prev.r, prev.g, prev.b
+            if ns.RefreshAllBarGradients then ns.RefreshAllBarGradients() end
+            ApplySettingsBarPreview(settingsEntry)
+        end,
+    })
+end
+
+-- Scan all descendants for bar entries (frames with cooldownID + StatusBar child)
+local function ScanAndApplyBarPreviews(frame, depth)
+    if depth > 8 then return end
+    for _, child in ipairs({ frame:GetChildren() }) do
+        if child.cooldownID then
+            -- Leaf entry — check for StatusBar child (bar vs icon)
+            for _, sub in ipairs({ child:GetChildren() }) do
+                if sub:GetObjectType() == "StatusBar" then
+                    ApplySettingsBarPreview(child)
+                    break
+                end
+            end
+        else
+            ScanAndApplyBarPreviews(child, depth + 1)
+        end
+    end
+end
+
+-- Apply gradient previews to settings-panel bar entries after tab/view change
+local settingsPreviewHooked = false
+local function ScheduleSettingsBarScan()
+    local settingsFrame = _G["CooldownViewerSettings"]
+    if not settingsFrame or not settingsFrame:IsVisible() then return end
+    local db = ns.db
+    if not db or not db.bars_colors or not next(db.bars_colors) then return end
+    -- Delay one frame so scroll pool entries are created
+    C_Timer.NewTimer(0, function()
+        ScanAndApplyBarPreviews(settingsFrame, 0)
+    end)
+end
+
+local function HookSettingsBarPreview()
+    if settingsPreviewHooked then return end
+    local settingsFrame = _G["CooldownViewerSettings"]
+    if not settingsFrame then return end
+    settingsPreviewHooked = true
+
+    -- Hook both tab button clicks — scan after content populates
+    if settingsFrame.TabButtons then
+        for _, tab in pairs(settingsFrame.TabButtons) do
+            if type(tab) == "table" and tab.HookScript then
+                tab:HookScript("OnMouseUp", ScheduleSettingsBarScan)
+            end
+        end
+    end
+
+    -- Also scan on settings panel open (covers case where bars tab is already active)
+    settingsFrame:HookScript("OnShow", ScheduleSettingsBarScan)
+end
+
+-- Wrap MenuUtil.CreateContextMenu to inject gradient options on bar entries
+local menuHooked = false
+local function HookBarContextMenu()
+    if menuHooked then return end
+    if not MenuUtil or not MenuUtil.CreateContextMenu then return end
+    menuHooked = true
+
+    local origCreate = MenuUtil.CreateContextMenu
+    MenuUtil.CreateContextMenu = function(owner, generator, ...)
+        local db = ns.db
+        if owner and owner.cooldownID and owner.GetCooldownID and db then
+            local wrappedGenerator = function(ownerInner, rootDescription)
+                generator(ownerInner, rootDescription)
+
+                local id = ownerInner.cooldownID
+                if not id then return end
+
+                rootDescription:CreateDivider()
+                rootDescription:CreateTitle("Gradient Colors")
+                rootDescription:CreateButton("Set Start Color", function()
+                    OpenBarColorPicker(id, "s", "Start", ownerInner)
+                end)
+                rootDescription:CreateButton("Set End Color", function()
+                    OpenBarColorPicker(id, "e", "End", ownerInner)
+                end)
+                if db.bars_colors and db.bars_colors[id] then
+                    rootDescription:CreateButton("Reset Gradient", function()
+                        db.bars_colors[id] = nil
+                        if ns.RefreshAllBarGradients then ns.RefreshAllBarGradients() end
+                        ApplySettingsBarPreview(ownerInner)
+                    end)
+                end
+            end
+            return origCreate(owner, wrappedGenerator, ...)
+        end
+        return origCreate(owner, generator, ...)
+    end
+end
+
+-- Retry hook installation + refresh previews on data changes
+EventRegistry:RegisterCallback("CooldownViewerSettings.OnDataChanged", function()
+    HookSettingsBarPreview()
+    ScheduleSettingsBarScan()
+end, "EnhancedCDM_SettingsBarPreview")
+
+-- Hook when SetupEditMode is called (viewers exist at that point)
+local origSetupEditMode = ns.SetupEditMode
+ns.SetupEditMode = function()
+    origSetupEditMode()
+    HookBarContextMenu()
+    HookSettingsBarPreview()
+end
