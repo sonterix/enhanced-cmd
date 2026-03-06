@@ -15,6 +15,9 @@ local CONTENT_LEFT   = 20
 local CONTENT_TOP    = 15
 local CONTENT_BOTTOM = 20
 local ROW_HEIGHT     = 34
+local DIVIDER_GAP    = 28
+
+local POSITION_ORDER = { "TOPLEFT", "TOP", "TOPRIGHT", "RIGHT", "BOTTOMRIGHT", "BOTTOM", "BOTTOMLEFT", "LEFT", "CENTER" }
 
 -- ---------------------------------------------------------------------------
 -- Panel creation — builds the settings panel (slider + 3 dropdowns)
@@ -153,12 +156,150 @@ local function CreateEditModePanel()
         end
     end)
 
+    -- -----------------------------------------------------------------------
+    -- Stack Text section — divider + 4 rows
+    -- -----------------------------------------------------------------------
+
+    local bStacksPrefix = "buffs_stacks_"
+
+    local bDivider = f:CreateTexture(nil, "ARTWORK")
+    bDivider:SetHeight(1)
+    bDivider:SetColorTexture(1, 1, 1, 0.3)
+    bDivider:SetPoint("TOPLEFT", row4, "BOTTOMLEFT", 0, -16)
+    bDivider:SetPoint("TOPRIGHT", row4, "BOTTOMRIGHT", 0, -16)
+
+    local bStackTitle = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    bStackTitle:SetPoint("TOP", bDivider, "BOTTOM", 0, -12)
+    bStackTitle:SetText("Stacks")
+
+    -- Row S1: Font Size
+    local bsRow1 = CreateFrame("Frame", nil, f)
+    bsRow1:SetHeight(ROW_HEIGHT)
+    bsRow1:SetPoint("TOP", bStackTitle, "BOTTOM", 0, -6)
+    bsRow1:SetPoint("LEFT", f, "LEFT", CONTENT_LEFT, 0)
+    bsRow1:SetPoint("RIGHT", f, "RIGHT", -CONTENT_LEFT, 0)
+
+    local bsFontLabel = bsRow1:CreateFontString(nil, "OVERLAY", "GameFontHighlightMedium")
+    bsFontLabel:SetPoint("LEFT", 0, 0)
+    bsFontLabel:SetWidth(LABEL_WIDTH)
+    bsFontLabel:SetJustifyH("LEFT")
+    bsFontLabel:SetText("Font Size")
+
+    local bsFontStepperName = "EnhancedCDMBuffsStackFontStepper"
+    local bsFontSteppers = CreateFrame("Frame", bsFontStepperName, bsRow1, "MinimalSliderWithSteppersTemplate")
+    bsFontSteppers:SetPoint("LEFT", bsFontLabel, "RIGHT", 5, 0)
+    bsFontSteppers:SetWidth(SLIDER_WIDTH)
+    bsFontSteppers:SetHeight(17)
+    local bsfFmt = {}
+    bsfFmt[MinimalSliderWithSteppersMixin.Label.Right] = CreateMinimalSliderFormatter(MinimalSliderWithSteppersMixin.Label.Right)
+    bsFontSteppers:Init(db[bStacksPrefix .. "fontSize"], 6, 32, 26, bsfFmt)
+    bsFontSteppers:RegisterCallback("OnValueChanged", function(_, value)
+        value = math.floor(value + 0.5)
+        ns.db[bStacksPrefix .. "fontSize"] = value
+        if ns.RefreshAllStacks then ns.RefreshAllStacks() end
+    end, bsFontSteppers)
+
+    -- Row S2: Position
+    local bsRow2 = CreateFrame("Frame", nil, f)
+    bsRow2:SetHeight(ROW_HEIGHT)
+    bsRow2:SetPoint("TOPLEFT", bsRow1, "BOTTOMLEFT", 0, 0)
+    bsRow2:SetPoint("TOPRIGHT", bsRow1, "BOTTOMRIGHT", 0, 0)
+
+    local bsPosLabel = bsRow2:CreateFontString(nil, "OVERLAY", "GameFontHighlightMedium")
+    bsPosLabel:SetPoint("LEFT", 0, 0)
+    bsPosLabel:SetWidth(LABEL_WIDTH)
+    bsPosLabel:SetJustifyH("LEFT")
+    bsPosLabel:SetText("Position")
+
+    local bsPosDropdown = CreateFrame("DropdownButton", "EnhancedCDMBuffsStackPosDropdown", bsRow2, "WowStyle1DropdownTemplate")
+    bsPosDropdown:SetPoint("LEFT", bsPosLabel, "RIGHT", 5, 0)
+    bsPosDropdown:SetWidth(DROPDOWN_WIDTH)
+    bsPosDropdown:SetDefaultText(ns.HOTKEY_POSITION_DISPLAY[db[bStacksPrefix .. "position"]])
+
+    bsPosDropdown:SetupMenu(function(owner, rootDescription)
+        for _, pos in ipairs(POSITION_ORDER) do
+            rootDescription:CreateRadio(
+                ns.HOTKEY_POSITION_DISPLAY[pos],
+                function() return ns.db[bStacksPrefix .. "position"] == pos end,
+                function()
+                    ns.db[bStacksPrefix .. "position"] = pos
+                    local anchor = ns.HOTKEY_POSITION_ANCHORS[pos]
+                    if anchor then
+                        ns.db[bStacksPrefix .. "offsetX"] = anchor.x
+                        ns.db[bStacksPrefix .. "offsetY"] = anchor.y
+                    end
+                    if ns.RefreshAllStacks then ns.RefreshAllStacks() end
+                    -- Sync slider widgets
+                    local soxS = _G["EnhancedCDMBuffsStackOffsetXStepper"]
+                    if soxS and soxS.Slider then soxS.Slider:SetValue(ns.db[bStacksPrefix .. "offsetX"]) end
+                    local soyS = _G["EnhancedCDMBuffsStackOffsetYStepper"]
+                    if soyS and soyS.Slider then soyS.Slider:SetValue(ns.db[bStacksPrefix .. "offsetY"]) end
+                end,
+                pos
+            )
+        end
+    end)
+
+    -- Row S3: Horizontal Offset
+    local bsRow3 = CreateFrame("Frame", nil, f)
+    bsRow3:SetHeight(ROW_HEIGHT)
+    bsRow3:SetPoint("TOPLEFT", bsRow2, "BOTTOMLEFT", 0, 0)
+    bsRow3:SetPoint("TOPRIGHT", bsRow2, "BOTTOMRIGHT", 0, 0)
+
+    local bsOffsetXLabel = bsRow3:CreateFontString(nil, "OVERLAY", "GameFontHighlightMedium")
+    bsOffsetXLabel:SetPoint("LEFT", 0, 0)
+    bsOffsetXLabel:SetWidth(LABEL_WIDTH)
+    bsOffsetXLabel:SetJustifyH("LEFT")
+    bsOffsetXLabel:SetText("Horizontal")
+
+    local bsOffsetXStepperName = "EnhancedCDMBuffsStackOffsetXStepper"
+    local bsOffsetXSteppers = CreateFrame("Frame", bsOffsetXStepperName, bsRow3, "MinimalSliderWithSteppersTemplate")
+    bsOffsetXSteppers:SetPoint("LEFT", bsOffsetXLabel, "RIGHT", 5, 0)
+    bsOffsetXSteppers:SetWidth(SLIDER_WIDTH)
+    bsOffsetXSteppers:SetHeight(17)
+    local bsoxFmt = {}
+    bsoxFmt[MinimalSliderWithSteppersMixin.Label.Right] = CreateMinimalSliderFormatter(MinimalSliderWithSteppersMixin.Label.Right)
+    bsOffsetXSteppers:Init(db[bStacksPrefix .. "offsetX"], -40, 40, 80, bsoxFmt)
+    bsOffsetXSteppers:RegisterCallback("OnValueChanged", function(_, value)
+        value = math.floor(value + 0.5)
+        ns.db[bStacksPrefix .. "offsetX"] = value
+        if ns.RefreshAllStacks then ns.RefreshAllStacks() end
+    end, bsOffsetXSteppers)
+
+    -- Row S4: Vertical Offset
+    local bsRow4 = CreateFrame("Frame", nil, f)
+    bsRow4:SetHeight(ROW_HEIGHT)
+    bsRow4:SetPoint("TOPLEFT", bsRow3, "BOTTOMLEFT", 0, 0)
+    bsRow4:SetPoint("TOPRIGHT", bsRow3, "BOTTOMRIGHT", 0, 0)
+
+    local bsOffsetYLabel = bsRow4:CreateFontString(nil, "OVERLAY", "GameFontHighlightMedium")
+    bsOffsetYLabel:SetPoint("LEFT", 0, 0)
+    bsOffsetYLabel:SetWidth(LABEL_WIDTH)
+    bsOffsetYLabel:SetJustifyH("LEFT")
+    bsOffsetYLabel:SetText("Vertical")
+
+    local bsOffsetYStepperName = "EnhancedCDMBuffsStackOffsetYStepper"
+    local bsOffsetYSteppers = CreateFrame("Frame", bsOffsetYStepperName, bsRow4, "MinimalSliderWithSteppersTemplate")
+    bsOffsetYSteppers:SetPoint("LEFT", bsOffsetYLabel, "RIGHT", 5, 0)
+    bsOffsetYSteppers:SetWidth(SLIDER_WIDTH)
+    bsOffsetYSteppers:SetHeight(17)
+    local bsoyFmt = {}
+    bsoyFmt[MinimalSliderWithSteppersMixin.Label.Right] = CreateMinimalSliderFormatter(MinimalSliderWithSteppersMixin.Label.Right)
+    bsOffsetYSteppers:Init(db[bStacksPrefix .. "offsetY"], -40, 40, 80, bsoyFmt)
+    bsOffsetYSteppers:RegisterCallback("OnValueChanged", function(_, value)
+        value = math.floor(value + 0.5)
+        ns.db[bStacksPrefix .. "offsetY"] = value
+        if ns.RefreshAllStacks then ns.RefreshAllStacks() end
+    end, bsOffsetYSteppers)
+
     f.growDropdown = dropdown
     f.alignDropdown = alignDropdown
     f.layoutDropdown = layoutDropdown
+    f.bsPosDropdown = bsPosDropdown
     editModePanel = f
 
-    f:SetSize(480, titleBottom + (ROW_HEIGHT * 4) + CONTENT_BOTTOM)
+    local stacksExtraHeight = DIVIDER_GAP + bStackTitle:GetStringHeight() + 6 + (ROW_HEIGHT * 4)
+    f:SetSize(480, titleBottom + (ROW_HEIGHT * 4) + stacksExtraHeight + CONTENT_BOTTOM)
 end
 
 -- ---------------------------------------------------------------------------
@@ -182,6 +323,16 @@ local function RefreshEditModePanel()
     if editModePanel.layoutDropdown then
         editModePanel.layoutDropdown:SetDefaultText(ns.LAYOUT_DISPLAY[db.layout])
     end
+    -- Refresh buffs stacks widgets
+    if editModePanel.bsPosDropdown then
+        editModePanel.bsPosDropdown:SetDefaultText(ns.HOTKEY_POSITION_DISPLAY[db.buffs_stacks_position])
+    end
+    local bsfS = _G["EnhancedCDMBuffsStackFontStepper"]
+    if bsfS and bsfS.Slider then bsfS.Slider:SetValue(db.buffs_stacks_fontSize) end
+    local bsoxS = _G["EnhancedCDMBuffsStackOffsetXStepper"]
+    if bsoxS and bsoxS.Slider then bsoxS.Slider:SetValue(db.buffs_stacks_offsetX) end
+    local bsoyS = _G["EnhancedCDMBuffsStackOffsetYStepper"]
+    if bsoyS and bsoyS.Slider then bsoyS.Slider:SetValue(db.buffs_stacks_offsetY) end
 end
 
 -- Anchors a panel to the left of Blizzard's settings dialog, or falls back
@@ -460,8 +611,6 @@ end
 -- Hotkeys panel factory — creates a checkbox + position + font size panel
 -- ---------------------------------------------------------------------------
 
-local POSITION_ORDER = { "TOPLEFT", "TOP", "TOPRIGHT", "RIGHT", "BOTTOMRIGHT", "BOTTOM", "BOTTOMLEFT", "LEFT", "CENTER" }
-
 local function CreateHotkeysPanelForViewer(frameName, titleText, prefix)
     local db = ns.db
 
@@ -615,6 +764,148 @@ local function CreateHotkeysPanelForViewer(frameName, titleText, prefix)
         if ns.RefreshAllHotkeys then ns.RefreshAllHotkeys() end
     end, offsetYSteppers)
 
+    -- -----------------------------------------------------------------------
+    -- Stack Text section — divider + 4 rows (always visible)
+    -- -----------------------------------------------------------------------
+
+    local stacksPrefix = prefix:gsub("hotkeys_$", "stacks_")
+
+    local divider = f:CreateTexture(nil, "ARTWORK")
+    divider:SetHeight(1)
+    divider:SetColorTexture(1, 1, 1, 0.3)
+
+    local stackTitle = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    stackTitle:SetText("Stacks")
+
+    -- Row S1: Font Size
+    local sRow1 = CreateFrame("Frame", nil, f)
+    sRow1:SetHeight(ROW_HEIGHT)
+
+    local sFontLabel = sRow1:CreateFontString(nil, "OVERLAY", "GameFontHighlightMedium")
+    sFontLabel:SetPoint("LEFT", 0, 0)
+    sFontLabel:SetWidth(LABEL_WIDTH)
+    sFontLabel:SetJustifyH("LEFT")
+    sFontLabel:SetText("Font Size")
+
+    local sFontStepperName = frameName .. "StackFontStepper"
+    local sFontSteppers = CreateFrame("Frame", sFontStepperName, sRow1, "MinimalSliderWithSteppersTemplate")
+    sFontSteppers:SetPoint("LEFT", sFontLabel, "RIGHT", 5, 0)
+    sFontSteppers:SetWidth(SLIDER_WIDTH)
+    sFontSteppers:SetHeight(17)
+    local sfFmt = {}
+    sfFmt[MinimalSliderWithSteppersMixin.Label.Right] = CreateMinimalSliderFormatter(MinimalSliderWithSteppersMixin.Label.Right)
+    sFontSteppers:Init(db[stacksPrefix .. "fontSize"], 6, 32, 26, sfFmt)
+    sFontSteppers:RegisterCallback("OnValueChanged", function(_, value)
+        value = math.floor(value + 0.5)
+        ns.db[stacksPrefix .. "fontSize"] = value
+        if ns.RefreshAllStacks then ns.RefreshAllStacks() end
+    end, sFontSteppers)
+
+    -- Row S2: Position
+    local sRow2 = CreateFrame("Frame", nil, f)
+    sRow2:SetHeight(ROW_HEIGHT)
+
+    local sPosLabel = sRow2:CreateFontString(nil, "OVERLAY", "GameFontHighlightMedium")
+    sPosLabel:SetPoint("LEFT", 0, 0)
+    sPosLabel:SetWidth(LABEL_WIDTH)
+    sPosLabel:SetJustifyH("LEFT")
+    sPosLabel:SetText("Position")
+
+    local sPosDropdown = CreateFrame("DropdownButton", frameName .. "StackPosDropdown", sRow2, "WowStyle1DropdownTemplate")
+    sPosDropdown:SetPoint("LEFT", sPosLabel, "RIGHT", 5, 0)
+    sPosDropdown:SetWidth(DROPDOWN_WIDTH)
+
+    local UpdateStacksWidgets
+
+    sPosDropdown:SetupMenu(function(owner, rootDescription)
+        for _, pos in ipairs(POSITION_ORDER) do
+            rootDescription:CreateRadio(
+                ns.HOTKEY_POSITION_DISPLAY[pos],
+                function() return ns.db[stacksPrefix .. "position"] == pos end,
+                function()
+                    ns.db[stacksPrefix .. "position"] = pos
+                    local anchor = ns.HOTKEY_POSITION_ANCHORS[pos]
+                    if anchor then
+                        ns.db[stacksPrefix .. "offsetX"] = anchor.x
+                        ns.db[stacksPrefix .. "offsetY"] = anchor.y
+                    end
+                    if ns.RefreshAllStacks then ns.RefreshAllStacks() end
+                    if UpdateStacksWidgets then UpdateStacksWidgets() end
+                end,
+                pos
+            )
+        end
+    end)
+
+    -- Row S3: Horizontal Offset
+    local sRow3 = CreateFrame("Frame", nil, f)
+    sRow3:SetHeight(ROW_HEIGHT)
+
+    local sOffsetXLabel = sRow3:CreateFontString(nil, "OVERLAY", "GameFontHighlightMedium")
+    sOffsetXLabel:SetPoint("LEFT", 0, 0)
+    sOffsetXLabel:SetWidth(LABEL_WIDTH)
+    sOffsetXLabel:SetJustifyH("LEFT")
+    sOffsetXLabel:SetText("Horizontal")
+
+    local sOffsetXStepperName = frameName .. "StackOffsetXStepper"
+    local sOffsetXSteppers = CreateFrame("Frame", sOffsetXStepperName, sRow3, "MinimalSliderWithSteppersTemplate")
+    sOffsetXSteppers:SetPoint("LEFT", sOffsetXLabel, "RIGHT", 5, 0)
+    sOffsetXSteppers:SetWidth(SLIDER_WIDTH)
+    sOffsetXSteppers:SetHeight(17)
+    local soxFmt = {}
+    soxFmt[MinimalSliderWithSteppersMixin.Label.Right] = CreateMinimalSliderFormatter(MinimalSliderWithSteppersMixin.Label.Right)
+    sOffsetXSteppers:Init(db[stacksPrefix .. "offsetX"], -40, 40, 80, soxFmt)
+    sOffsetXSteppers:RegisterCallback("OnValueChanged", function(_, value)
+        value = math.floor(value + 0.5)
+        ns.db[stacksPrefix .. "offsetX"] = value
+        if ns.RefreshAllStacks then ns.RefreshAllStacks() end
+    end, sOffsetXSteppers)
+
+    -- Row S4: Vertical Offset
+    local sRow4 = CreateFrame("Frame", nil, f)
+    sRow4:SetHeight(ROW_HEIGHT)
+
+    local sOffsetYLabel = sRow4:CreateFontString(nil, "OVERLAY", "GameFontHighlightMedium")
+    sOffsetYLabel:SetPoint("LEFT", 0, 0)
+    sOffsetYLabel:SetWidth(LABEL_WIDTH)
+    sOffsetYLabel:SetJustifyH("LEFT")
+    sOffsetYLabel:SetText("Vertical")
+
+    local sOffsetYStepperName = frameName .. "StackOffsetYStepper"
+    local sOffsetYSteppers = CreateFrame("Frame", sOffsetYStepperName, sRow4, "MinimalSliderWithSteppersTemplate")
+    sOffsetYSteppers:SetPoint("LEFT", sOffsetYLabel, "RIGHT", 5, 0)
+    sOffsetYSteppers:SetWidth(SLIDER_WIDTH)
+    sOffsetYSteppers:SetHeight(17)
+    local soyFmt = {}
+    soyFmt[MinimalSliderWithSteppersMixin.Label.Right] = CreateMinimalSliderFormatter(MinimalSliderWithSteppersMixin.Label.Right)
+    sOffsetYSteppers:Init(db[stacksPrefix .. "offsetY"], -40, 40, 80, soyFmt)
+    sOffsetYSteppers:RegisterCallback("OnValueChanged", function(_, value)
+        value = math.floor(value + 0.5)
+        ns.db[stacksPrefix .. "offsetY"] = value
+        if ns.RefreshAllStacks then ns.RefreshAllStacks() end
+    end, sOffsetYSteppers)
+
+    UpdateStacksWidgets = function()
+        local sfSteppers = _G[sFontStepperName]
+        if sfSteppers and sfSteppers.Slider then
+            sfSteppers.Slider:SetValue(ns.db[stacksPrefix .. "fontSize"])
+        end
+
+        sPosDropdown:SetDefaultText(ns.HOTKEY_POSITION_DISPLAY[ns.db[stacksPrefix .. "position"]])
+
+        local soxSteppers = _G[sOffsetXStepperName]
+        if soxSteppers and soxSteppers.Slider then
+            soxSteppers.Slider:SetValue(ns.db[stacksPrefix .. "offsetX"])
+        end
+
+        local soySteppers = _G[sOffsetYStepperName]
+        if soySteppers and soySteppers.Slider then
+            soySteppers.Slider:SetValue(ns.db[stacksPrefix .. "offsetY"])
+        end
+    end
+
+    -- -----------------------------------------------------------------------
+
     checkbox:SetScript("OnClick", function(self)
         ns.db[prefix .. "show"] = self:GetChecked()
         UpdatePanel()
@@ -647,6 +938,8 @@ local function CreateHotkeysPanelForViewer(frameName, titleText, prefix)
         if oySteppers and oySteppers.Slider then
             oySteppers.Slider:SetValue(ns.db[prefix .. "offsetY"])
         end
+
+        UpdateStacksWidgets()
 
         local visibleRows = 1
         local lastRow = row1
@@ -684,6 +977,7 @@ local function CreateHotkeysPanelForViewer(frameName, titleText, prefix)
             row6:SetPoint("TOPLEFT", lastRow, "BOTTOMLEFT", 0, 0)
             row6:SetPoint("TOPRIGHT", lastRow, "BOTTOMRIGHT", 0, 0)
             row6:Show()
+            lastRow = row6
             visibleRows = visibleRows + 1
         else
             row2:Hide()
@@ -693,7 +987,37 @@ local function CreateHotkeysPanelForViewer(frameName, titleText, prefix)
             row6:Hide()
         end
 
-        f:SetHeight(titleBottom + (ROW_HEIGHT * visibleRows) + CONTENT_BOTTOM)
+        -- Stack Text divider + rows (always visible)
+        divider:ClearAllPoints()
+        divider:SetPoint("TOPLEFT", lastRow, "BOTTOMLEFT", 0, -16)
+        divider:SetPoint("TOPRIGHT", lastRow, "BOTTOMRIGHT", 0, -16)
+
+        stackTitle:ClearAllPoints()
+        stackTitle:SetPoint("TOP", divider, "BOTTOM", 0, -12)
+
+        sRow1:ClearAllPoints()
+        sRow1:SetPoint("TOP", stackTitle, "BOTTOM", 0, -6)
+        sRow1:SetPoint("LEFT", f, "LEFT", CONTENT_LEFT, 0)
+        sRow1:SetPoint("RIGHT", f, "RIGHT", -CONTENT_LEFT, 0)
+        sRow1:Show()
+
+        sRow2:ClearAllPoints()
+        sRow2:SetPoint("TOPLEFT", sRow1, "BOTTOMLEFT", 0, 0)
+        sRow2:SetPoint("TOPRIGHT", sRow1, "BOTTOMRIGHT", 0, 0)
+        sRow2:Show()
+
+        sRow3:ClearAllPoints()
+        sRow3:SetPoint("TOPLEFT", sRow2, "BOTTOMLEFT", 0, 0)
+        sRow3:SetPoint("TOPRIGHT", sRow2, "BOTTOMRIGHT", 0, 0)
+        sRow3:Show()
+
+        sRow4:ClearAllPoints()
+        sRow4:SetPoint("TOPLEFT", sRow3, "BOTTOMLEFT", 0, 0)
+        sRow4:SetPoint("TOPRIGHT", sRow3, "BOTTOMRIGHT", 0, 0)
+        sRow4:Show()
+
+        local stacksExtraHeight = DIVIDER_GAP + stackTitle:GetStringHeight() + 6 + (ROW_HEIGHT * 4)
+        f:SetHeight(titleBottom + (ROW_HEIGHT * visibleRows) + stacksExtraHeight + CONTENT_BOTTOM)
     end
 
     f.UpdatePanel = UpdatePanel

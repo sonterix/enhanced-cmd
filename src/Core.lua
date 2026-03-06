@@ -135,6 +135,19 @@ local function GetHotkeyPrefix(frame)
     return nil
 end
 
+local function GetStacksPrefix(frame)
+    local parent = frame and frame:GetParent()
+    if parent == essentialViewer then
+        return "essential_stacks_"
+    elseif parent == utilityViewer then
+        return "utility_stacks_"
+    elseif parent == viewer then
+        return "buffs_stacks_"
+    end
+    return nil
+end
+ns._GetStacksPrefix = GetStacksPrefix
+
 -- Create or update the hotkey FontString on a cooldown viewer icon
 local function UpdateFrameHotkey(frame)
     if not frame or not db then
@@ -226,6 +239,53 @@ local function ScheduleHotkeyRefresh()
     hotkeyRefreshTimer = C_Timer.NewTimer(0, function()
         hotkeyRefreshTimer = nil
         RefreshAllHotkeys()
+    end)
+end
+
+-- ---------------------------------------------------------------------------
+-- Stack / charge count text — repositions Blizzard's ChargeCount FontString
+-- ---------------------------------------------------------------------------
+
+local function UpdateFrameStacks(frame)
+    if not frame or not db then return end
+    local cc = frame.ChargeCount
+    if not cc then return end
+    local prefix = GetStacksPrefix(frame)
+    if not prefix then return end
+
+    local position = db[prefix .. "position"]
+    local fontSize = db[prefix .. "fontSize"]
+    local offsetX  = db[prefix .. "offsetX"]
+    local offsetY  = db[prefix .. "offsetY"]
+    local anchor   = ns.HOTKEY_POSITION_ANCHORS[position]
+                     or ns.HOTKEY_POSITION_ANCHORS["BOTTOMRIGHT"]
+    local justify  = ns.HOTKEY_POSITION_JUSTIFY[position] or "RIGHT"
+
+    cc:SetFont("Fonts\\ARIALN.TTF", fontSize, "OUTLINE")
+    cc:ClearAllPoints()
+    cc:SetPoint(anchor.point, frame, anchor.point, offsetX, offsetY)
+    cc:SetJustifyH(justify)
+end
+
+local function RefreshAllStacks()
+    for _, v in ipairs({ essentialViewer, utilityViewer, viewer }) do
+        if v then
+            for _, child in ipairs({ v:GetChildren() }) do
+                if child.cooldownID then
+                    UpdateFrameStacks(child)
+                end
+            end
+        end
+    end
+end
+ns.RefreshAllStacks = RefreshAllStacks
+
+local stacksRefreshTimer = nil
+local function ScheduleStacksRefresh()
+    if stacksRefreshTimer then stacksRefreshTimer:Cancel() end
+    stacksRefreshTimer = C_Timer.NewTimer(0, function()
+        stacksRefreshTimer = nil
+        RefreshAllStacks()
     end)
 end
 
@@ -629,6 +689,7 @@ local function InstallMixinHooks()
             if self == viewer then
                 HookFrame(frame)
                 ScheduleLayout()
+                UpdateFrameStacks(frame)
             elseif self == barViewer then
                 HookBarFrame(frame)
                 ApplyBarGradient(frame)
@@ -636,6 +697,7 @@ local function InstallMixinHooks()
             elseif self == essentialViewer or self == utilityViewer then
                 BuildSlotToBindingMap()
                 UpdateFrameHotkey(frame)
+                UpdateFrameStacks(frame)
             end
         end)
     end
@@ -646,10 +708,12 @@ local function InstallMixinHooks()
             local parent = frame and frame:GetParent()
             if parent == viewer then
                 ScheduleLayout()
+                UpdateFrameStacks(frame)
             elseif parent == barViewer then
                 ScheduleBarsLayout()
             elseif parent == essentialViewer or parent == utilityViewer then
                 UpdateFrameHotkey(frame)
+                UpdateFrameStacks(frame)
             end
         end
 
@@ -686,6 +750,7 @@ local function InstallMixinHooks()
                 ScheduleLayout()
                 ScheduleBarsLayout()
                 ScheduleHotkeyRefresh()
+                ScheduleStacksRefresh()
                 RefreshAllBarGradients()
             end,
             ADDON_NAME
@@ -750,6 +815,8 @@ local function TryInit()
     local newUtility = _G["UtilityCooldownViewer"]
     local needEditMode = false
 
+    local needStacksRefresh = false
+
     if newViewer and newViewer ~= viewer then
         viewer = newViewer
         ns.viewer = viewer
@@ -757,6 +824,7 @@ local function TryInit()
         wipe(hookedFrames)
         InstallHooks()
         needEditMode = true
+        needStacksRefresh = true
     end
 
     if newBarViewer and newBarViewer ~= barViewer then
@@ -775,6 +843,7 @@ local function TryInit()
         ns.essentialViewer = essentialViewer
         needEditMode = true
         needHotkeyRefresh = true
+        needStacksRefresh = true
     end
 
     if newUtility and newUtility ~= utilityViewer then
@@ -782,10 +851,14 @@ local function TryInit()
         ns.utilityViewer = utilityViewer
         needEditMode = true
         needHotkeyRefresh = true
+        needStacksRefresh = true
     end
 
     if needHotkeyRefresh then
         RefreshAllHotkeys()
+    end
+    if needStacksRefresh then
+        RefreshAllStacks()
     end
 
     if needEditMode then
@@ -804,6 +877,8 @@ local function TryInit()
         attempts = attempts + 1
         local foundNew = false
 
+        local needStacksRefresh = false
+
         local foundViewer = _G["BuffIconCooldownViewer"]
         if foundViewer and foundViewer ~= viewer then
             viewer = foundViewer
@@ -812,6 +887,7 @@ local function TryInit()
             wipe(hookedFrames)
             InstallHooks()
             foundNew = true
+            needStacksRefresh = true
         end
 
         local foundBarViewer = _G["BuffBarCooldownViewer"]
@@ -832,6 +908,7 @@ local function TryInit()
             ns.essentialViewer = essentialViewer
             foundNew = true
             needHotkeyRefresh = true
+            needStacksRefresh = true
         end
 
         local foundUtility = _G["UtilityCooldownViewer"]
@@ -840,10 +917,14 @@ local function TryInit()
             ns.utilityViewer = utilityViewer
             foundNew = true
             needHotkeyRefresh = true
+            needStacksRefresh = true
         end
 
         if needHotkeyRefresh then
             RefreshAllHotkeys()
+        end
+        if needStacksRefresh then
+            RefreshAllStacks()
         end
 
         if foundNew then
@@ -971,6 +1052,59 @@ local function RegisterSlashCommands()
                 else
                     print("|cff00ccffEnhanced CDM:|r Usage: /ecdm " .. cmd .. " offsety <-40 to 40>")
                 end
+            elseif subCmd == "stacks" then
+                local sPrefix = cmd == "essential" and "essential_stacks_" or "utility_stacks_"
+                local sCmd, sArg = subArg:match("^(%S+)%s*(.*)")
+                sCmd = sCmd and sCmd:lower() or ""
+                if sCmd == "position" or sCmd == "pos" then
+                    local pos = sArg:upper()
+                    if ns.HOTKEY_POSITION_DISPLAY[pos] then
+                        db[sPrefix .. "position"] = pos
+                        local anchor = ns.HOTKEY_POSITION_ANCHORS[pos]
+                        if anchor then
+                            db[sPrefix .. "offsetX"] = anchor.x
+                            db[sPrefix .. "offsetY"] = anchor.y
+                        end
+                        print("|cff00ccffEnhanced CDM:|r " .. label .. " stacks position set to " .. ns.HOTKEY_POSITION_DISPLAY[pos])
+                        RefreshAllStacks()
+                    else
+                        print("|cff00ccffEnhanced CDM:|r Usage: /ecdm " .. cmd .. " stacks position <topleft|top|topright|right|bottomright|bottom|bottomleft|left|center>")
+                    end
+                elseif sCmd == "fontsize" or sCmd == "size" then
+                    local n = tonumber(sArg)
+                    if n and n >= 6 and n <= 32 then
+                        db[sPrefix .. "fontSize"] = math.floor(n)
+                        print("|cff00ccffEnhanced CDM:|r " .. label .. " stacks font size set to " .. db[sPrefix .. "fontSize"])
+                        RefreshAllStacks()
+                    else
+                        print("|cff00ccffEnhanced CDM:|r Usage: /ecdm " .. cmd .. " stacks fontsize <6-32>")
+                    end
+                elseif sCmd == "offsetx" then
+                    local n = tonumber(sArg)
+                    if n and n >= -40 and n <= 40 then
+                        db[sPrefix .. "offsetX"] = math.floor(n)
+                        print("|cff00ccffEnhanced CDM:|r " .. label .. " stacks horizontal offset set to " .. db[sPrefix .. "offsetX"])
+                        RefreshAllStacks()
+                    else
+                        print("|cff00ccffEnhanced CDM:|r Usage: /ecdm " .. cmd .. " stacks offsetx <-40 to 40>")
+                    end
+                elseif sCmd == "offsety" then
+                    local n = tonumber(sArg)
+                    if n and n >= -40 and n <= 40 then
+                        db[sPrefix .. "offsetY"] = math.floor(n)
+                        print("|cff00ccffEnhanced CDM:|r " .. label .. " stacks vertical offset set to " .. db[sPrefix .. "offsetY"])
+                        RefreshAllStacks()
+                    else
+                        print("|cff00ccffEnhanced CDM:|r Usage: /ecdm " .. cmd .. " stacks offsety <-40 to 40>")
+                    end
+                else
+                    local posText = ns.HOTKEY_POSITION_DISPLAY[db[sPrefix .. "position"]] or db[sPrefix .. "position"]
+                    print("|cff00ccffEnhanced CDM — " .. label .. " Stacks:|r position " .. posText .. ", font size " .. db[sPrefix .. "fontSize"] .. ", offset " .. db[sPrefix .. "offsetX"] .. "," .. db[sPrefix .. "offsetY"])
+                    print("  /ecdm " .. cmd .. " stacks position <pos>    - Set position")
+                    print("  /ecdm " .. cmd .. " stacks fontsize <6-32>   - Set font size")
+                    print("  /ecdm " .. cmd .. " stacks offsetx <-40..40> - Horizontal offset")
+                    print("  /ecdm " .. cmd .. " stacks offsety <-40..40> - Vertical offset")
+                end
             else
                 local showText = db[prefix .. "show"] and "Shown" or "Hidden"
                 local posText = ns.HOTKEY_POSITION_DISPLAY[db[prefix .. "position"]] or db[prefix .. "position"]
@@ -984,6 +1118,7 @@ local function RegisterSlashCommands()
                 print("  /ecdm " .. cmd .. " noshorten         - Show full keybind text")
                 print("  /ecdm " .. cmd .. " offsetx <-40..40> - Horizontal offset")
                 print("  /ecdm " .. cmd .. " offsety <-40..40> - Vertical offset")
+                print("  /ecdm " .. cmd .. " stacks            - Stack text settings")
             end
         elseif cmd == "bars" then
             local subCmd, subArg = arg:match("^(%S+)%s*(.*)")
@@ -1106,6 +1241,65 @@ local function RegisterSlashCommands()
                 print("  /ecdm bars perrow <1-8>")
                 print("  /ecdm bars gradient                          - Bar color gradients")
             end
+        elseif cmd == "buffs" then
+            local subCmd, subArg = arg:match("^(%S+)%s*(.*)")
+            subCmd = subCmd and subCmd:lower() or ""
+            local sPrefix = "buffs_stacks_"
+            if subCmd == "stacks" then
+                local sCmd, sArg = subArg:match("^(%S+)%s*(.*)")
+                sCmd = sCmd and sCmd:lower() or ""
+                subCmd = sCmd
+                subArg = sArg or ""
+            end
+            if subCmd == "position" or subCmd == "pos" then
+                local pos = subArg:upper()
+                if ns.HOTKEY_POSITION_DISPLAY[pos] then
+                    db[sPrefix .. "position"] = pos
+                    local anchor = ns.HOTKEY_POSITION_ANCHORS[pos]
+                    if anchor then
+                        db[sPrefix .. "offsetX"] = anchor.x
+                        db[sPrefix .. "offsetY"] = anchor.y
+                    end
+                    print("|cff00ccffEnhanced CDM:|r Buffs stacks position set to " .. ns.HOTKEY_POSITION_DISPLAY[pos])
+                    RefreshAllStacks()
+                else
+                    print("|cff00ccffEnhanced CDM:|r Usage: /ecdm buffs position <topleft|top|topright|right|bottomright|bottom|bottomleft|left|center>")
+                end
+            elseif subCmd == "fontsize" or subCmd == "size" then
+                local n = tonumber(subArg)
+                if n and n >= 6 and n <= 32 then
+                    db[sPrefix .. "fontSize"] = math.floor(n)
+                    print("|cff00ccffEnhanced CDM:|r Buffs stacks font size set to " .. db[sPrefix .. "fontSize"])
+                    RefreshAllStacks()
+                else
+                    print("|cff00ccffEnhanced CDM:|r Usage: /ecdm buffs fontsize <6-32>")
+                end
+            elseif subCmd == "offsetx" then
+                local n = tonumber(subArg)
+                if n and n >= -40 and n <= 40 then
+                    db[sPrefix .. "offsetX"] = math.floor(n)
+                    print("|cff00ccffEnhanced CDM:|r Buffs stacks horizontal offset set to " .. db[sPrefix .. "offsetX"])
+                    RefreshAllStacks()
+                else
+                    print("|cff00ccffEnhanced CDM:|r Usage: /ecdm buffs offsetx <-40 to 40>")
+                end
+            elseif subCmd == "offsety" then
+                local n = tonumber(subArg)
+                if n and n >= -40 and n <= 40 then
+                    db[sPrefix .. "offsetY"] = math.floor(n)
+                    print("|cff00ccffEnhanced CDM:|r Buffs stacks vertical offset set to " .. db[sPrefix .. "offsetY"])
+                    RefreshAllStacks()
+                else
+                    print("|cff00ccffEnhanced CDM:|r Usage: /ecdm buffs offsety <-40 to 40>")
+                end
+            else
+                local posText = ns.HOTKEY_POSITION_DISPLAY[db[sPrefix .. "position"]] or db[sPrefix .. "position"]
+                print("|cff00ccffEnhanced CDM — Buffs Stacks:|r position " .. posText .. ", font size " .. db[sPrefix .. "fontSize"] .. ", offset " .. db[sPrefix .. "offsetX"] .. "," .. db[sPrefix .. "offsetY"])
+                print("  /ecdm buffs position <pos>    - Set position")
+                print("  /ecdm buffs fontsize <6-32>   - Set font size")
+                print("  /ecdm buffs offsetx <-40..40> - Horizontal offset")
+                print("  /ecdm buffs offsety <-40..40> - Vertical offset")
+            end
         else
             print("|cff00ccffEnhanced CDM|r v" .. (VERSION or "?"))
             local dirDisplay = ns.DIRECTION_DISPLAY[db.growDirection]
@@ -1132,6 +1326,7 @@ local function RegisterSlashCommands()
             print("  /ecdm bars                       - Bars settings and commands")
             print("  /ecdm essential                  - Essential hotkey settings")
             print("  /ecdm utility                    - Utility hotkey settings")
+            print("  /ecdm buffs                      - Buffs stacks text settings")
         end
     end
 end

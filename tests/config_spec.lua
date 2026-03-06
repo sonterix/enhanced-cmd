@@ -10,6 +10,12 @@ describe("Config defaults", function()
             "essential_hotkeys_offsetX", "essential_hotkeys_offsetY",
             "utility_hotkeys_show", "utility_hotkeys_position", "utility_hotkeys_fontSize", "utility_hotkeys_shorten",
             "utility_hotkeys_offsetX", "utility_hotkeys_offsetY",
+            "essential_stacks_fontSize", "essential_stacks_position",
+            "essential_stacks_offsetX", "essential_stacks_offsetY",
+            "utility_stacks_fontSize", "utility_stacks_position",
+            "utility_stacks_offsetX", "utility_stacks_offsetY",
+            "buffs_stacks_fontSize", "buffs_stacks_position",
+            "buffs_stacks_offsetX", "buffs_stacks_offsetY",
         }
         for _, key in ipairs(expected) do
             expect(ns.DEFAULTS[key] ~= nil).to_be_truthy()
@@ -33,6 +39,25 @@ describe("Config defaults", function()
         expect(ns.DEFAULTS.essential_hotkeys_offsetY).to_equal(anchor.y)
         expect(ns.DEFAULTS.utility_hotkeys_offsetX).to_equal(anchor.x)
         expect(ns.DEFAULTS.utility_hotkeys_offsetY).to_equal(anchor.y)
+    end)
+
+    it("stacks offset defaults match BOTTOMRIGHT anchor values", function()
+        local anchor = ns.HOTKEY_POSITION_ANCHORS["BOTTOMRIGHT"]
+        expect(ns.DEFAULTS.essential_stacks_offsetX).to_equal(anchor.x)
+        expect(ns.DEFAULTS.essential_stacks_offsetY).to_equal(anchor.y)
+        expect(ns.DEFAULTS.utility_stacks_offsetX).to_equal(anchor.x)
+        expect(ns.DEFAULTS.utility_stacks_offsetY).to_equal(anchor.y)
+        expect(ns.DEFAULTS.buffs_stacks_offsetX).to_equal(anchor.x)
+        expect(ns.DEFAULTS.buffs_stacks_offsetY).to_equal(anchor.y)
+    end)
+
+    it("stacks defaults have sensible values", function()
+        expect(ns.DEFAULTS.essential_stacks_fontSize).to_equal(12)
+        expect(ns.DEFAULTS.essential_stacks_position).to_equal("BOTTOMRIGHT")
+        expect(ns.DEFAULTS.utility_stacks_fontSize).to_equal(12)
+        expect(ns.DEFAULTS.utility_stacks_position).to_equal("BOTTOMRIGHT")
+        expect(ns.DEFAULTS.buffs_stacks_fontSize).to_equal(12)
+        expect(ns.DEFAULTS.buffs_stacks_position).to_equal("BOTTOMRIGHT")
     end)
 end)
 

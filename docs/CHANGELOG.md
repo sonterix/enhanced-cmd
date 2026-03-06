@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.10.0] - 2026-03-05
+
+### Added
+- **Stack/charge count text customization** for Essential, Utility, and Buffs viewers
+  - Adjustable font size, anchor position, and X/Y offsets for Blizzard's native ChargeCount text
+  - Settings integrated into existing Edit Mode panels with visual divider
+- `/ecdm essential stacks`, `/ecdm utility stacks`, `/ecdm buffs` slash commands for stack text settings
+
 ## [0.9.0] - 2026-03-05
 
 ### Added
