@@ -6,9 +6,6 @@
 - **Edit Mode settings panels now embed into Blizzard's dialog** — panels appear as a left column alongside the native settings dialog with a shared border and vertical divider, instead of floating as separate windows
 - Panels automatically unembed and restore the dialog's original border when closed or when the dialog hides
 
-### Removed
-- Temporary `debugdialog` slash command (investigation tool from development)
-
 ## [0.10.0] - 2026-03-05
 
 ### Added
@@ -33,9 +30,6 @@
   - `/ecdm bars gradient <id> <sR> <sG> <sB> <eR> <eG> <eB>` — set gradient by cooldownID
   - `/ecdm bars gradient <id> off` — remove gradient (revert to default orange)
   - `/ecdm bars gradient clear` — remove all gradients
-
-### Removed
-- Temporary `debugsettings` slash command (investigation tool from development)
 
 ## [0.8.0] - 2026-03-03
 
