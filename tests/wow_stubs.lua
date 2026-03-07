@@ -20,7 +20,10 @@ local FrameMixin = {}
 FrameMixin.__index = FrameMixin
 
 function FrameMixin:GetParent() return self._parent end
-function FrameMixin:GetChildren() return unpack(self._children or {}) end
+function FrameMixin:GetChildren() return (unpack or table.unpack)(self._children or {}) end
+function FrameMixin:GetObjectType() return self._type or "Frame" end
+function FrameMixin:GetStatusBarTexture() return self._statusBarTexture end
+function FrameMixin:GetFrameLevel() return self._frameLevel or 0 end
 function FrameMixin:SetSize(w, h) self._width = w; self._height = h end
 function FrameMixin:GetWidth() return self._width or 0 end
 function FrameMixin:GetHeight() return self._height or 0 end
@@ -33,7 +36,7 @@ function FrameMixin:Hide() self._shown = false end
 function FrameMixin:IsShown() return self._shown ~= false end
 function FrameMixin:EnableMouse() end
 function FrameMixin:SetFrameStrata() end
-function FrameMixin:SetFrameLevel() end
+function FrameMixin:SetFrameLevel(level) self._frameLevel = level end
 function FrameMixin:SetWidth(w) self._width = w end
 function FrameMixin:SetHeight(h) self._height = h end
 function FrameMixin:RegisterEvent() end
@@ -86,6 +89,9 @@ function CreateFrame(frameType, name, parent, template)
         },
     }, FrameMixin)
     if name then _G[name] = f end
+    if parent and parent._children then
+        table.insert(parent._children, f)
+    end
     table.insert(_G._allFrames, f)
     return f
 end
@@ -108,21 +114,24 @@ function C_AddOns.GetAddOnMetadata(addon, key)
     return nil
 end
 
--- C_ActionBar stub
+-- C_ActionBar stub (configurable via _stubSpellActionButtons)
 C_ActionBar = C_ActionBar or {}
+_G._stubSpellActionButtons = {}
 function C_ActionBar.FindSpellActionButtons(spellID)
-    return {}
+    return _G._stubSpellActionButtons[spellID] or {}
 end
 
--- C_Spell stub
+-- C_Spell stub (configurable via _stubOverrideSpells)
 C_Spell = C_Spell or {}
+_G._stubOverrideSpells = {}
 function C_Spell.GetOverrideSpell(spellID)
-    return spellID
+    return _G._stubOverrideSpells[spellID] or spellID
 end
 
--- Binding stub
+-- Binding stub (configurable via _stubBindingKeys)
+_G._stubBindingKeys = {}
 function GetBindingKey(binding)
-    return nil
+    return _G._stubBindingKeys[binding]
 end
 
 -- Event registry stub
@@ -145,5 +154,32 @@ EditModeManagerFrame = nil
 -- UIParent stub
 UIParent = UIParent or CreateFrame("Frame", "UIParent")
 
+-- CreateColor stub
+function CreateColor(r, g, b, a)
+    return { r = r, g = g, b = b, a = a }
+end
+
 -- EnhancedCDMDB starts nil (like first login)
 EnhancedCDMDB = nil
+
+-- Print capture helpers for slash command tests
+_G._originalPrint = print
+_G._printCapture = nil
+
+function _G._startCapture()
+    _G._printCapture = {}
+    _G.print = function(...)
+        local parts = {}
+        for i = 1, select("#", ...) do
+            parts[i] = tostring(select(i, ...))
+        end
+        table.insert(_G._printCapture, table.concat(parts, "\t"))
+    end
+end
+
+function _G._stopCapture()
+    _G.print = _G._originalPrint
+    local lines = _G._printCapture
+    _G._printCapture = nil
+    return lines
+end

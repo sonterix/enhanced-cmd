@@ -1362,3 +1362,5 @@ end)
 -- Test-only exports — used by tests/runner.lua, not by other addon files
 ns._FormatKeyText = FormatKeyText
 ns._CalcGridPosition = CalcGridPosition
+ns._GetHotkeyText = GetHotkeyText
+ns._BuildSlotToBindingMap = BuildSlotToBindingMap
