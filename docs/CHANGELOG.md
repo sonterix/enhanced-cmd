@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.12.0] - 2026-03-06
+
+### Added
+- **Icon alignment for Essential and Utility Cooldowns** — Left/Center/Right alignment setting matching the Buffs panel
+  - Icons are positioned in a single row with alignment offset relative to the full viewer width
+  - SetPoint hooks enforce alignment positions and survive Blizzard repositioning
+  - Alignment dropdown appears as the first setting in the Essential/Utility Edit Mode panels
+- `/ecdm essential align <left|center|right>` and `/ecdm utility align` slash commands
+- Blizzard's "Icon Position" setting is now hidden for Essential and Utility viewers (previously only hidden for Buffs and Bars)
+
 ## [0.11.0] - 2026-03-05
 
 ### Changed

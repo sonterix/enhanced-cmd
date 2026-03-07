@@ -755,7 +755,7 @@ end
 -- Hotkeys panel factory — creates a checkbox + position + font size panel
 -- ---------------------------------------------------------------------------
 
-local function CreateHotkeysPanelForViewer(frameName, titleText, prefix)
+local function CreateHotkeysPanelForViewer(frameName, titleText, prefix, alignKey, applyAlignFn)
     local db = ns.db
 
     local f = CreateFrame("Frame", frameName, UIParent)
@@ -773,11 +773,106 @@ local function CreateHotkeysPanelForViewer(frameName, titleText, prefix)
 
     local titleBottom = CONTENT_TOP + title:GetStringHeight() + 10
 
+    -- Scrollable content area below the title
+    local scrollFrame = CreateFrame("ScrollFrame", nil, f)
+    scrollFrame:SetPoint("TOPLEFT", f, "TOPLEFT", 0, -titleBottom)
+    scrollFrame:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", 0, CONTENT_BOTTOM)
+    scrollFrame:EnableMouseWheel(true)
+
+    local scrollChild = CreateFrame("Frame", nil, scrollFrame)
+    scrollFrame:SetScrollChild(scrollChild)
+    scrollChild:SetWidth(1) -- updated dynamically
+
+    -- Scroll bar track + thumb (auto-show when content overflows)
+    local scrollTrack = CreateFrame("Frame", nil, f)
+    scrollTrack:SetWidth(8)
+    scrollTrack:SetPoint("TOPRIGHT", scrollFrame, "TOPRIGHT", 0, -2)
+    scrollTrack:SetPoint("BOTTOMRIGHT", scrollFrame, "BOTTOMRIGHT", 0, 2)
+    scrollTrack:Hide()
+
+    local scrollThumb = CreateFrame("Frame", nil, scrollTrack, "BackdropTemplate")
+    scrollThumb:SetWidth(8)
+    scrollThumb:SetPoint("TOP", scrollTrack, "TOP", 0, 0)
+    scrollThumb:SetHeight(20)
+    scrollThumb:SetBackdrop({
+        bgFile   = "Interface/Buttons/WHITE8X8",
+        edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
+        edgeSize = 6,
+        insets   = { left = 1, right = 1, top = 1, bottom = 1 },
+    })
+    scrollThumb:SetBackdropColor(0.6, 0.6, 0.6, 0.5)
+    scrollThumb:SetBackdropBorderColor(0.6, 0.6, 0.6, 0.5)
+
+    local function UpdateScrollBar()
+        local childH = scrollChild:GetHeight()
+        local frameH = scrollFrame:GetHeight()
+        if childH <= frameH or frameH < 1 then
+            scrollTrack:Hide()
+            return
+        end
+        scrollTrack:Show()
+        local trackH = scrollTrack:GetHeight()
+        local thumbH = math.max(20, (frameH / childH) * trackH)
+        scrollThumb:SetHeight(thumbH)
+        local maxScroll = childH - frameH
+        local scroll = scrollFrame:GetVerticalScroll()
+        local ratio = (maxScroll > 0) and (scroll / maxScroll) or 0
+        local thumbOffset = ratio * (trackH - thumbH)
+        scrollThumb:ClearAllPoints()
+        scrollThumb:SetPoint("TOP", scrollTrack, "TOP", 0, -thumbOffset)
+    end
+
+    scrollFrame:SetScript("OnSizeChanged", function(self, width)
+        scrollChild:SetWidth(width)
+        UpdateScrollBar()
+    end)
+
+    scrollFrame:SetScript("OnMouseWheel", function(self, delta)
+        local maxScroll = math.max(0, scrollChild:GetHeight() - self:GetHeight())
+        local newScroll = math.max(0, math.min(maxScroll, self:GetVerticalScroll() - delta * 30))
+        self:SetVerticalScroll(newScroll)
+        UpdateScrollBar()
+    end)
+
+    scrollFrame:SetScript("OnScrollRangeChanged", function()
+        UpdateScrollBar()
+    end)
+
+    -- Row 0: Alignment — [label] [dropdown] (always visible)
+    local row0 = CreateFrame("Frame", nil, scrollChild)
+    row0:SetHeight(ROW_HEIGHT)
+    row0:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", CONTENT_LEFT, 0)
+    row0:SetPoint("TOPRIGHT", scrollChild, "TOPRIGHT", -CONTENT_LEFT, 0)
+
+    local alignLabel = row0:CreateFontString(nil, "OVERLAY", "GameFontHighlightMedium")
+    alignLabel:SetPoint("LEFT", 0, 0)
+    alignLabel:SetWidth(LABEL_WIDTH)
+    alignLabel:SetJustifyH("LEFT")
+    alignLabel:SetText("Alignment")
+
+    local alignDropdown = CreateFrame("DropdownButton", frameName .. "AlignDropdown", row0, "WowStyle1DropdownTemplate")
+    alignDropdown:SetPoint("LEFT", alignLabel, "RIGHT", 5, 0)
+    alignDropdown:SetWidth(DROPDOWN_WIDTH)
+    alignDropdown:SetDefaultText(ns.ALIGN_DISPLAY[db[alignKey]])
+    alignDropdown:SetupMenu(function(owner, rootDescription)
+        for _, a in ipairs({ "LEFT", "CENTER", "RIGHT" }) do
+            rootDescription:CreateRadio(
+                ns.ALIGN_DISPLAY[a],
+                function() return ns.db[alignKey] == a end,
+                function()
+                    ns.db[alignKey] = a
+                    if applyAlignFn then applyAlignFn() end
+                end,
+                a
+            )
+        end
+    end)
+
     -- Row 1: Show Keybinds checkbox
-    local row1 = CreateFrame("Frame", nil, f)
+    local row1 = CreateFrame("Frame", nil, scrollChild)
     row1:SetHeight(ROW_HEIGHT)
-    row1:SetPoint("TOPLEFT", f, "TOPLEFT", CONTENT_LEFT, -titleBottom)
-    row1:SetPoint("TOPRIGHT", f, "TOPRIGHT", -CONTENT_LEFT, -titleBottom)
+    row1:SetPoint("TOPLEFT", row0, "BOTTOMLEFT", 0, 0)
+    row1:SetPoint("TOPRIGHT", row0, "BOTTOMRIGHT", 0, 0)
 
     local checkbox = CreateFrame("CheckButton", frameName .. "Checkbox", row1, "UICheckButtonTemplate")
     checkbox:SetPoint("LEFT", 0, 0)
@@ -789,7 +884,7 @@ local function CreateHotkeysPanelForViewer(frameName, titleText, prefix)
     showLabel:SetText("Show Keybinds")
 
     -- Row 2: Shorten Keybinds Text — conditional: visible when show=true
-    local row2 = CreateFrame("Frame", nil, f)
+    local row2 = CreateFrame("Frame", nil, scrollChild)
     row2:SetHeight(ROW_HEIGHT)
 
     local shortenCheckbox = CreateFrame("CheckButton", frameName .. "ShortenCheckbox", row2, "UICheckButtonTemplate")
@@ -802,7 +897,7 @@ local function CreateHotkeysPanelForViewer(frameName, titleText, prefix)
     shortenLabel:SetText("Shorten Keybinds Text")
 
     -- Row 3: Font Size — conditional: visible when show=true
-    local row3 = CreateFrame("Frame", nil, f)
+    local row3 = CreateFrame("Frame", nil, scrollChild)
     row3:SetHeight(ROW_HEIGHT)
 
     local fontLabel = row3:CreateFontString(nil, "OVERLAY", "GameFontHighlightMedium")
@@ -826,7 +921,7 @@ local function CreateHotkeysPanelForViewer(frameName, titleText, prefix)
     end, fontSteppers)
 
     -- Row 4: Position — conditional: visible when show=true
-    local row4 = CreateFrame("Frame", nil, f)
+    local row4 = CreateFrame("Frame", nil, scrollChild)
     row4:SetHeight(ROW_HEIGHT)
 
     local posLabel = row4:CreateFontString(nil, "OVERLAY", "GameFontHighlightMedium")
@@ -864,7 +959,7 @@ local function CreateHotkeysPanelForViewer(frameName, titleText, prefix)
     end)
 
     -- Row 5: Horizontal Offset — conditional: visible when show=true
-    local row5 = CreateFrame("Frame", nil, f)
+    local row5 = CreateFrame("Frame", nil, scrollChild)
     row5:SetHeight(ROW_HEIGHT)
 
     local offsetXLabel = row5:CreateFontString(nil, "OVERLAY", "GameFontHighlightMedium")
@@ -888,7 +983,7 @@ local function CreateHotkeysPanelForViewer(frameName, titleText, prefix)
     end, offsetXSteppers)
 
     -- Row 6: Vertical Offset — conditional: visible when show=true
-    local row6 = CreateFrame("Frame", nil, f)
+    local row6 = CreateFrame("Frame", nil, scrollChild)
     row6:SetHeight(ROW_HEIGHT)
 
     local offsetYLabel = row6:CreateFontString(nil, "OVERLAY", "GameFontHighlightMedium")
@@ -917,15 +1012,15 @@ local function CreateHotkeysPanelForViewer(frameName, titleText, prefix)
 
     local stacksPrefix = prefix:gsub("hotkeys_$", "stacks_")
 
-    local divider = f:CreateTexture(nil, "ARTWORK")
+    local divider = scrollChild:CreateTexture(nil, "ARTWORK")
     divider:SetHeight(1)
     divider:SetColorTexture(1, 1, 1, 0.3)
 
-    local stackTitle = f:CreateFontString(nil, "OVERLAY", "GameFontNormalMed3")
+    local stackTitle = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormalMed3")
     stackTitle:SetText("Stacks")
 
     -- Row S1: Font Size
-    local sRow1 = CreateFrame("Frame", nil, f)
+    local sRow1 = CreateFrame("Frame", nil, scrollChild)
     sRow1:SetHeight(ROW_HEIGHT)
 
     local sFontLabel = sRow1:CreateFontString(nil, "OVERLAY", "GameFontHighlightMedium")
@@ -949,7 +1044,7 @@ local function CreateHotkeysPanelForViewer(frameName, titleText, prefix)
     end, sFontSteppers)
 
     -- Row S2: Position
-    local sRow2 = CreateFrame("Frame", nil, f)
+    local sRow2 = CreateFrame("Frame", nil, scrollChild)
     sRow2:SetHeight(ROW_HEIGHT)
 
     local sPosLabel = sRow2:CreateFontString(nil, "OVERLAY", "GameFontHighlightMedium")
@@ -985,7 +1080,7 @@ local function CreateHotkeysPanelForViewer(frameName, titleText, prefix)
     end)
 
     -- Row S3: Horizontal Offset
-    local sRow3 = CreateFrame("Frame", nil, f)
+    local sRow3 = CreateFrame("Frame", nil, scrollChild)
     sRow3:SetHeight(ROW_HEIGHT)
 
     local sOffsetXLabel = sRow3:CreateFontString(nil, "OVERLAY", "GameFontHighlightMedium")
@@ -1009,7 +1104,7 @@ local function CreateHotkeysPanelForViewer(frameName, titleText, prefix)
     end, sOffsetXSteppers)
 
     -- Row S4: Vertical Offset
-    local sRow4 = CreateFrame("Frame", nil, f)
+    local sRow4 = CreateFrame("Frame", nil, scrollChild)
     sRow4:SetHeight(ROW_HEIGHT)
 
     local sOffsetYLabel = sRow4:CreateFontString(nil, "OVERLAY", "GameFontHighlightMedium")
@@ -1065,6 +1160,8 @@ local function CreateHotkeysPanelForViewer(frameName, titleText, prefix)
     end)
 
     UpdatePanel = function()
+        SetDropdownText(alignDropdown, ns.ALIGN_DISPLAY[ns.db[alignKey]])
+
         local showHotkeys = ns.db[prefix .. "show"]
         checkbox:SetChecked(showHotkeys)
         shortenCheckbox:SetChecked(ns.db[prefix .. "shorten"])
@@ -1088,7 +1185,7 @@ local function CreateHotkeysPanelForViewer(frameName, titleText, prefix)
 
         UpdateStacksWidgets()
 
-        local visibleRows = 1
+        local visibleRows = 2  -- alignment row + show keybinds row always visible
         local lastRow = row1
 
         if showHotkeys then
@@ -1144,8 +1241,8 @@ local function CreateHotkeysPanelForViewer(frameName, titleText, prefix)
 
         sRow1:ClearAllPoints()
         sRow1:SetPoint("TOP", stackTitle, "BOTTOM", 0, -6)
-        sRow1:SetPoint("LEFT", f, "LEFT", CONTENT_LEFT, 0)
-        sRow1:SetPoint("RIGHT", f, "RIGHT", -CONTENT_LEFT, 0)
+        sRow1:SetPoint("LEFT", scrollChild, "LEFT", CONTENT_LEFT, 0)
+        sRow1:SetPoint("RIGHT", scrollChild, "RIGHT", -CONTENT_LEFT, 0)
         sRow1:Show()
 
         sRow2:ClearAllPoints()
@@ -1171,25 +1268,34 @@ local function CreateHotkeysPanelForViewer(frameName, titleText, prefix)
         hotkeyResetBtn:SetPoint("TOPRIGHT", hotkeyResetDivider, "BOTTOMRIGHT", 0, -10)
 
         local stacksExtraHeight = DIVIDER_GAP + stackTitle:GetStringHeight() + 6 + (ROW_HEIGHT * 4)
-        f:SetHeight(titleBottom + (ROW_HEIGHT * visibleRows) + stacksExtraHeight + CONTENT_BOTTOM + 52)
+        local contentHeight = (ROW_HEIGHT * visibleRows) + stacksExtraHeight + 52
+        scrollChild:SetHeight(contentHeight)
+
+        -- Set panel height for standalone mode (embedded mode ignores this)
+        f:SetHeight(titleBottom + contentHeight + CONTENT_BOTTOM)
+
+        -- Reset scroll to top when toggling sections
+        scrollFrame:SetVerticalScroll(0)
+        UpdateScrollBar()
     end
 
     -- Reset To Default button
-    local hotkeyKeys = {}
+    local hotkeyKeys = { alignKey }
     for key in pairs(ns.DEFAULTS) do
         if key:find("^" .. prefix) or key:find("^" .. stacksPrefix) then
             hotkeyKeys[#hotkeyKeys + 1] = key
         end
     end
-    hotkeyResetDivider = f:CreateTexture(nil, "ARTWORK")
+    hotkeyResetDivider = scrollChild:CreateTexture(nil, "ARTWORK")
     hotkeyResetDivider:SetHeight(1)
     hotkeyResetDivider:SetColorTexture(1, 1, 1, 0.3)
 
-    hotkeyResetBtn = CreateRedButton(f, "Reset To Default", function()
+    hotkeyResetBtn = CreateRedButton(scrollChild, "Reset To Default", function()
         for _, key in ipairs(hotkeyKeys) do
             ns.db[key] = ns.DEFAULTS[key]
         end
         UpdatePanel()
+        if applyAlignFn then applyAlignFn() end
         if ns.RefreshAllHotkeys then ns.RefreshAllHotkeys() end
         if ns.RefreshAllStacks then ns.RefreshAllStacks() end
     end)
@@ -1207,7 +1313,8 @@ end
 local function ShowEssentialHotkeysPanel()
     if not essentialHotkeysPanel then
         essentialHotkeysPanel = CreateHotkeysPanelForViewer(
-            "EnhancedCDMEssentialHotkeysPanel", "Enhanced CDM - Essential", "essential_hotkeys_")
+            "EnhancedCDMEssentialHotkeysPanel", "Enhanced CDM - Essential", "essential_hotkeys_",
+            "essential_align", ns.ApplyEssentialLayout)
     end
     essentialHotkeysPanel.UpdatePanel()
     EmbedPanelInDialog(essentialHotkeysPanel)
@@ -1222,7 +1329,8 @@ end
 local function ShowUtilityHotkeysPanel()
     if not utilityHotkeysPanel then
         utilityHotkeysPanel = CreateHotkeysPanelForViewer(
-            "EnhancedCDMUtilityHotkeysPanel", "Enhanced CDM - Utility", "utility_hotkeys_")
+            "EnhancedCDMUtilityHotkeysPanel", "Enhanced CDM - Utility", "utility_hotkeys_",
+            "utility_align", ns.ApplyUtilityLayout)
     end
     utilityHotkeysPanel.UpdatePanel()
     EmbedPanelInDialog(utilityHotkeysPanel)
@@ -1266,8 +1374,10 @@ local function SetupEditMode()
                 if ns.ScheduleBarsLayout then ns.ScheduleBarsLayout() end
             elseif systemFrame == essViewer then
                 ShowEssentialHotkeysPanel()
+                if ns.ScheduleEssentialLayout then ns.ScheduleEssentialLayout() end
             elseif systemFrame == utilViewer then
                 ShowUtilityHotkeysPanel()
+                if ns.ScheduleUtilityLayout then ns.ScheduleUtilityLayout() end
             end
         end)
 
@@ -1282,6 +1392,8 @@ local function SetupEditMode()
             HideAllPanels()
             if ns.ScheduleLayout then ns.ScheduleLayout() end
             if ns.ScheduleBarsLayout then ns.ScheduleBarsLayout() end
+            if ns.ScheduleEssentialLayout then ns.ScheduleEssentialLayout() end
+            if ns.ScheduleUtilityLayout then ns.ScheduleUtilityLayout() end
         end)
 
         -- Hide the "Icon Direction" setting when a CDM viewer is selected
@@ -1291,7 +1403,10 @@ local function SetupEditMode()
                 hooksecurefunc(dialog, "UpdateSettings", function(self)
                     local buffViewer = _G["BuffIconCooldownViewer"]
                     local buffBarViewer = _G["BuffBarCooldownViewer"]
-                    if self.attachedToSystem == buffViewer or self.attachedToSystem == buffBarViewer then
+                    local essViewer = _G["EssentialCooldownViewer"]
+                    local utilViewer = _G["UtilityCooldownViewer"]
+                    if self.attachedToSystem == buffViewer or self.attachedToSystem == buffBarViewer
+                        or self.attachedToSystem == essViewer or self.attachedToSystem == utilViewer then
                         local children = { self.Settings:GetChildren() }
                         for _, child in ipairs(children) do
                             if child.setting == Enum.EditModeCooldownViewerSetting.IconDirection then

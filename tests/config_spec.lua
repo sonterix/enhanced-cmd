@@ -6,8 +6,10 @@ describe("Config defaults", function()
         local expected = {
             "maxPerRow", "growDirection", "align", "layout",
             "bars_orientation", "bars_layout", "bars_align", "bars_maxPerRow", "bars_colors",
+            "essential_align",
             "essential_hotkeys_show", "essential_hotkeys_position", "essential_hotkeys_fontSize", "essential_hotkeys_shorten",
             "essential_hotkeys_offsetX", "essential_hotkeys_offsetY",
+            "utility_align",
             "utility_hotkeys_show", "utility_hotkeys_position", "utility_hotkeys_fontSize", "utility_hotkeys_shorten",
             "utility_hotkeys_offsetX", "utility_hotkeys_offsetY",
             "essential_stacks_fontSize", "essential_stacks_position",
@@ -27,6 +29,8 @@ describe("Config defaults", function()
         expect(ns.DEFAULTS.growDirection).to_equal("DOWN")
         expect(ns.DEFAULTS.align).to_equal("CENTER")
         expect(ns.DEFAULTS.layout).to_equal("STATIC")
+        expect(ns.DEFAULTS.essential_align).to_equal("CENTER")
+        expect(ns.DEFAULTS.utility_align).to_equal("CENTER")
         expect(ns.DEFAULTS.essential_hotkeys_show).to_equal(false)
         expect(ns.DEFAULTS.utility_hotkeys_show).to_equal(false)
         expect(ns.DEFAULTS.bars_colors).to_be_type("table")

@@ -22,9 +22,10 @@ Enhances World of Warcraft's built-in Cooldown Manager (CDM) with configurable l
 
 ### Essential & Utility Cooldowns
 
+- **Icon alignment** — Left, center, or right alignment (replaces Blizzard's Icon Position setting)
 - **Keybind text overlay** — Displays the configured hotkey from your action bars on each cooldown icon
 - **Compact format** — Modifier keys shortened (SHIFT → S, CTRL → C, ALT → A) with optional full-text mode
-- **Independent settings** — Separate show/hide, position, font size, and text shortening for Essential and Utility
+- **Independent settings** — Separate alignment, show/hide, position, font size, and text shortening for Essential and Utility
 - **9-position anchor** — Place keybind text at any corner, edge, or center of the icon
 - **Fine-tune offsets** — Horizontal and vertical pixel offsets for precise placement
 - **Stack text customization** — Same charge count text options as Tracked Buffs
@@ -35,7 +36,7 @@ All settings are accessible through Edit Mode panels that appear when selecting 
 
 - **Tracked Buffs** — Icons per row, growth, alignment, layout mode, stack text
 - **Tracked Bars** — Orientation, layout, alignment, bars per row
-- **Essential Cooldowns** — Keybind show/hide, shorten, font size, position, offsets, stack text
+- **Essential Cooldowns** — Alignment, keybind show/hide, shorten, font size, position, offsets, stack text
 - **Utility Cooldowns** — Same options as Essential, configured independently
 
 Panels embed into Blizzard's Edit Mode settings dialog with a shared border.
@@ -85,7 +86,8 @@ Replace `essential` with `utility` for Utility cooldown commands.
 
 | Command | Description |
 |---|---|
-| `/ecdm essential` | Show Essential hotkey settings |
+| `/ecdm essential` | Show Essential settings |
+| `/ecdm essential align <left\|center\|right>` | Set icon alignment |
 | `/ecdm essential show` | Show keybind text |
 | `/ecdm essential hide` | Hide keybind text |
 | `/ecdm essential position <pos>` | Set keybind text position |

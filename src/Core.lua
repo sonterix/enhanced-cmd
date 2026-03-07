@@ -16,6 +16,12 @@ local barLayoutTimer = nil
 
 local essentialViewer
 local utilityViewer
+local essentialHookedFrames = {}
+local utilityHookedFrames = {}
+local essentialHookState = { installed = false }
+local utilityHookState = { installed = false }
+local essentialLayoutTimer = nil
+local utilityLayoutTimer = nil
 local slotToBinding = {}
 local initTicker = nil
 
@@ -624,6 +630,132 @@ HookBarFrame = function(frame)
 end
 
 -- ---------------------------------------------------------------------------
+-- Essential / Utility alignment layout — grid with Left/Center/Right
+-- ---------------------------------------------------------------------------
+
+local essAlignBuf = {}
+local utilAlignBuf = {}
+
+local HookEssentialFrame  -- forward declaration
+local HookUtilityFrame    -- forward declaration
+
+local function ApplyAlignLayout(v, alignKey, buf, hookChildFn)
+    if not v then return end
+
+    wipe(buf)
+    local children = { v:GetChildren() }
+    local n = 0
+    local totalChildren = 0
+    for i = 1, #children do
+        local child = children[i]
+        hookChildFn(child)
+        if child.cooldownID then
+            totalChildren = totalChildren + 1
+            if child:IsShown() then
+                n = n + 1
+                buf[n] = child
+            end
+        end
+    end
+    if n == 0 then return end
+
+    table.sort(buf, SortByLayoutIndex)
+
+    -- Read column count from Blizzard's stride (iconLimit = #Columns setting)
+    local maxPerRow = (v.GetStride and v:GetStride())
+        or v.iconLimit
+        or totalChildren
+    if maxPerRow < 1 then maxPerRow = totalChildren end
+
+    local scale = buf[1]:GetScale()
+    if scale < 0.01 then scale = 1 end
+
+    local iconW = buf[1]:GetWidth()
+    local iconH = buf[1]:GetHeight()
+    if iconW < 1 then iconW = 36 end
+    if iconH < 1 then iconH = 36 end
+
+    local spacing = 0
+    if v.iconPadding ~= nil then
+        local offset = v.GetAdditionalPaddingOffset
+            and v:GetAdditionalPaddingOffset() or -4
+        spacing = v.iconPadding + offset
+    end
+
+    local align = db[alignKey]
+    local numRows = math.ceil(n / maxPerRow)
+    local refCols = maxPerRow
+    local fullRowWidth = refCols * (iconW + spacing) - spacing
+
+    -- Position each icon using the shared grid calculator
+    for i = 1, n do
+        local frame = buf[i]
+        local x, y = CalcGridPosition(i, maxPerRow, iconW, iconH, spacing, align, n, fullRowWidth)
+
+        frame._arTargetX = x
+        frame._arTargetY = y
+        frame._arSettingPos = true
+        frame:ClearAllPoints()
+        frame:SetPoint("TOPLEFT", v, "TOPLEFT", x, -y)
+        frame._arSettingPos = false
+    end
+
+    -- Size viewer to fit the full grid
+    local totalW = fullRowWidth * scale
+    local totalH = (numRows * (iconH + spacing) - spacing) * scale
+    if totalW > 0 and totalH > 0 then
+        v:SetSize(totalW, totalH)
+    end
+end
+
+local function ApplyEssentialLayout()
+    ApplyAlignLayout(essentialViewer, "essential_align", essAlignBuf, function(f)
+        if HookEssentialFrame then HookEssentialFrame(f) end
+    end)
+end
+
+local function ApplyUtilityLayout()
+    ApplyAlignLayout(utilityViewer, "utility_align", utilAlignBuf, function(f)
+        if HookUtilityFrame then HookUtilityFrame(f) end
+    end)
+end
+
+local function ScheduleEssentialLayout()
+    if essentialLayoutTimer then essentialLayoutTimer:Cancel() end
+    essentialLayoutTimer = C_Timer.NewTimer(0, function()
+        essentialLayoutTimer = nil
+        ApplyEssentialLayout()
+    end)
+end
+
+local function ScheduleUtilityLayout()
+    if utilityLayoutTimer then utilityLayoutTimer:Cancel() end
+    utilityLayoutTimer = C_Timer.NewTimer(0, function()
+        utilityLayoutTimer = nil
+        ApplyUtilityLayout()
+    end)
+end
+
+ns.ApplyEssentialLayout = ApplyEssentialLayout
+ns.ApplyUtilityLayout = ApplyUtilityLayout
+ns.ScheduleEssentialLayout = ScheduleEssentialLayout
+ns.ScheduleUtilityLayout = ScheduleUtilityLayout
+
+HookEssentialFrame = function(frame)
+    HookViewerChild(frame, essentialHookedFrames,
+        function() return essentialViewer end,
+        function() return true end,
+        ScheduleEssentialLayout)
+end
+
+HookUtilityFrame = function(frame)
+    HookViewerChild(frame, utilityHookedFrames,
+        function() return utilityViewer end,
+        function() return true end,
+        ScheduleUtilityLayout)
+end
+
+-- ---------------------------------------------------------------------------
 -- Bar gradient engine — per-bar start/end color gradients
 -- ---------------------------------------------------------------------------
 
@@ -686,7 +818,15 @@ local function InstallMixinHooks()
                 HookBarFrame(frame)
                 ApplyBarGradient(frame)
                 ScheduleBarsLayout()
-            elseif self == essentialViewer or self == utilityViewer then
+            elseif self == essentialViewer then
+                HookEssentialFrame(frame)
+                ScheduleEssentialLayout()
+                BuildSlotToBindingMap()
+                UpdateFrameHotkey(frame)
+                UpdateFrameStacks(frame)
+            elseif self == utilityViewer then
+                HookUtilityFrame(frame)
+                ScheduleUtilityLayout()
                 BuildSlotToBindingMap()
                 UpdateFrameHotkey(frame)
                 UpdateFrameStacks(frame)
@@ -703,7 +843,12 @@ local function InstallMixinHooks()
                 UpdateFrameStacks(frame)
             elseif parent == barViewer then
                 ScheduleBarsLayout()
-            elseif parent == essentialViewer or parent == utilityViewer then
+            elseif parent == essentialViewer then
+                ScheduleEssentialLayout()
+                UpdateFrameHotkey(frame)
+                UpdateFrameStacks(frame)
+            elseif parent == utilityViewer then
+                ScheduleUtilityLayout()
                 UpdateFrameHotkey(frame)
                 UpdateFrameStacks(frame)
             end
@@ -715,7 +860,13 @@ local function InstallMixinHooks()
                 ScheduleLayout()
             elseif parent == barViewer then
                 ScheduleBarsLayout()
-            elseif parent == essentialViewer or parent == utilityViewer then
+            elseif parent == essentialViewer then
+                ScheduleEssentialLayout()
+                if frame._ecdmHotkeyText then
+                    frame._ecdmHotkeyText:Hide()
+                end
+            elseif parent == utilityViewer then
+                ScheduleUtilityLayout()
                 if frame._ecdmHotkeyText then
                     frame._ecdmHotkeyText:Hide()
                 end
@@ -741,6 +892,8 @@ local function InstallMixinHooks()
             function()
                 ScheduleLayout()
                 ScheduleBarsLayout()
+                ScheduleEssentialLayout()
+                ScheduleUtilityLayout()
                 ScheduleHotkeyRefresh()
                 ScheduleStacksRefresh()
                 RefreshAllBarGradients()
@@ -795,6 +948,18 @@ local function InstallBarsHooks()
         "Bar hook installation failed — bars layout disabled.")
 end
 
+local function InstallEssentialHooks()
+    InstallViewerHooks(essentialHookState, function() return essentialViewer end,
+        HookEssentialFrame, ScheduleEssentialLayout, ApplyEssentialLayout,
+        "Essential hook installation failed — alignment disabled.")
+end
+
+local function InstallUtilityHooks()
+    InstallViewerHooks(utilityHookState, function() return utilityViewer end,
+        HookUtilityFrame, ScheduleUtilityLayout, ApplyUtilityLayout,
+        "Utility hook installation failed — alignment disabled.")
+end
+
 -- ---------------------------------------------------------------------------
 -- Deferred init — polls for both viewers (may not exist immediately)
 -- ---------------------------------------------------------------------------
@@ -832,6 +997,9 @@ local function TryInit()
     if newEssential and newEssential ~= essentialViewer then
         essentialViewer = newEssential
         ns.essentialViewer = essentialViewer
+        essentialHookState.installed = false
+        wipe(essentialHookedFrames)
+        InstallEssentialHooks()
         needEditMode = true
         needHotkeyRefresh = true
         needStacksRefresh = true
@@ -840,6 +1008,9 @@ local function TryInit()
     if newUtility and newUtility ~= utilityViewer then
         utilityViewer = newUtility
         ns.utilityViewer = utilityViewer
+        utilityHookState.installed = false
+        wipe(utilityHookedFrames)
+        InstallUtilityHooks()
         needEditMode = true
         needHotkeyRefresh = true
         needStacksRefresh = true
@@ -896,6 +1067,9 @@ local function TryInit()
         if foundEssential and foundEssential ~= essentialViewer then
             essentialViewer = foundEssential
             ns.essentialViewer = essentialViewer
+            essentialHookState.installed = false
+            wipe(essentialHookedFrames)
+            InstallEssentialHooks()
             foundNew = true
             needHotkeyRefresh = true
             needStacksRefresh = true
@@ -905,6 +1079,9 @@ local function TryInit()
         if foundUtility and foundUtility ~= utilityViewer then
             utilityViewer = foundUtility
             ns.utilityViewer = utilityViewer
+            utilityHookState.installed = false
+            wipe(utilityHookedFrames)
+            InstallUtilityHooks()
             foundNew = true
             needHotkeyRefresh = true
             needStacksRefresh = true
@@ -981,11 +1158,22 @@ local function RegisterSlashCommands()
             end
         elseif cmd == "essential" or cmd == "utility" then
             local prefix = cmd == "essential" and "essential_hotkeys_" or "utility_hotkeys_"
+            local alignKey = cmd == "essential" and "essential_align" or "utility_align"
             local label = cmd == "essential" and "Essential" or "Utility"
+            local applyAlignFn = cmd == "essential" and ApplyEssentialLayout or ApplyUtilityLayout
             local subCmd, subArg = arg:match("^(%S+)%s*(.*)")
             subCmd = subCmd and subCmd:lower() or ""
 
-            if subCmd == "show" then
+            if subCmd == "align" then
+                local a = subArg:upper()
+                if a == "LEFT" or a == "CENTER" or a == "RIGHT" then
+                    db[alignKey] = a
+                    print("|cff00ccffEnhanced CDM:|r " .. label .. " alignment set to " .. ns.ALIGN_DISPLAY[a])
+                    applyAlignFn()
+                else
+                    print("|cff00ccffEnhanced CDM:|r Usage: /ecdm " .. cmd .. " align <left|center|right>")
+                end
+            elseif subCmd == "show" then
                 db[prefix .. "show"] = true
                 print("|cff00ccffEnhanced CDM:|r " .. label .. " hotkeys enabled")
                 RefreshAllHotkeys()
@@ -1096,10 +1284,12 @@ local function RegisterSlashCommands()
                     print("  /ecdm " .. cmd .. " stacks offsety <-40..40> - Vertical offset")
                 end
             else
+                local alignDisplay = ns.ALIGN_DISPLAY[db[alignKey]] or db[alignKey]
                 local showText = db[prefix .. "show"] and "Shown" or "Hidden"
                 local posText = ns.HOTKEY_POSITION_DISPLAY[db[prefix .. "position"]] or db[prefix .. "position"]
                 local shortenText = db[prefix .. "shorten"] and "Shortened" or "Full"
-                print("|cff00ccffEnhanced CDM — " .. label .. " Hotkeys:|r " .. showText .. ", position " .. posText .. ", font size " .. db[prefix .. "fontSize"] .. ", text " .. shortenText .. ", offset " .. db[prefix .. "offsetX"] .. "," .. db[prefix .. "offsetY"])
+                print("|cff00ccffEnhanced CDM — " .. label .. ":|r align " .. alignDisplay .. ", hotkeys " .. showText .. ", position " .. posText .. ", font size " .. db[prefix .. "fontSize"] .. ", text " .. shortenText .. ", offset " .. db[prefix .. "offsetX"] .. "," .. db[prefix .. "offsetY"])
+                print("  /ecdm " .. cmd .. " align <l|c|r>     - Icon alignment")
                 print("  /ecdm " .. cmd .. " show              - Show keybinds")
                 print("  /ecdm " .. cmd .. " hide              - Hide keybinds")
                 print("  /ecdm " .. cmd .. " position <pos>    - Set position")
@@ -1301,14 +1491,16 @@ local function RegisterSlashCommands()
             local bAlignMap = db.bars_orientation == "VERTICAL" and ns.BAR_ALIGN_V_DISPLAY or ns.BAR_ALIGN_H_DISPLAY
             local bAlign = bAlignMap[db.bars_align] or db.bars_align
             print("  Bars:  " .. bOrient .. ", " .. bLayout .. ", align " .. bAlign .. ", " .. db.bars_maxPerRow .. " per row")
+            local eAlign = ns.ALIGN_DISPLAY[db.essential_align] or db.essential_align
             local eShow = db.essential_hotkeys_show and "Shown" or "Hidden"
             local ePos = ns.HOTKEY_POSITION_DISPLAY[db.essential_hotkeys_position] or db.essential_hotkeys_position
             local eShorten = db.essential_hotkeys_shorten and "Shortened" or "Full"
-            print("  Essential: " .. eShow .. ", position " .. ePos .. ", font size " .. db.essential_hotkeys_fontSize .. ", text " .. eShorten .. ", offset " .. db.essential_hotkeys_offsetX .. "," .. db.essential_hotkeys_offsetY)
+            print("  Essential: align " .. eAlign .. ", hotkeys " .. eShow .. ", position " .. ePos .. ", font size " .. db.essential_hotkeys_fontSize .. ", text " .. eShorten)
+            local uAlign = ns.ALIGN_DISPLAY[db.utility_align] or db.utility_align
             local uShow = db.utility_hotkeys_show and "Shown" or "Hidden"
             local uPos = ns.HOTKEY_POSITION_DISPLAY[db.utility_hotkeys_position] or db.utility_hotkeys_position
             local uShorten = db.utility_hotkeys_shorten and "Shortened" or "Full"
-            print("  Utility:   " .. uShow .. ", position " .. uPos .. ", font size " .. db.utility_hotkeys_fontSize .. ", text " .. uShorten .. ", offset " .. db.utility_hotkeys_offsetX .. "," .. db.utility_hotkeys_offsetY)
+            print("  Utility:   align " .. uAlign .. ", hotkeys " .. uShow .. ", position " .. uPos .. ", font size " .. db.utility_hotkeys_fontSize .. ", text " .. uShorten)
             print("  /ecdm rows <1-40>               - Icons per row")
             print("  /ecdm grow <up|down>             - Row growth direction")
             print("  /ecdm align <left|center|right>  - Row alignment")
