@@ -99,7 +99,7 @@ local function runSpecs()
         end
     end
 
-    -- Collect spec files
+    -- Collect spec files (Unix-style first, Windows CMD fallback)
     local specFiles = {}
     local p = io.popen('ls tests/*_spec.lua 2>/dev/null')
     if p then
@@ -107,6 +107,15 @@ local function runSpecs()
             table.insert(specFiles, line)
         end
         p:close()
+    end
+    if #specFiles == 0 then
+        p = io.popen('dir /B tests\\*_spec.lua 2>nul')
+        if p then
+            for line in p:lines() do
+                table.insert(specFiles, "tests/" .. line)
+            end
+            p:close()
+        end
     end
 
     if #specFiles == 0 then

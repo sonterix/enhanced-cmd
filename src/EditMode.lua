@@ -24,6 +24,24 @@ local EMBED_COL_WIDTH = 380
 local activeEmbeddedPanel = nil
 local wrapperFrame = nil
 
+-- Creates a red button matching Blizzard's Edit Mode style.
+local function CreateRedButton(parent, label, onClick)
+    local btn = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
+    btn:SetHeight(30)
+    btn:SetText(label)
+    btn:SetNormalFontObject("GameFontNormal")
+    btn:SetHighlightFontObject("GameFontHighlight")
+    local normalTex = btn:GetNormalTexture()
+    if normalTex then normalTex:SetVertexColor(0.7, 0.1, 0.1) end
+    local pushedTex = btn:GetPushedTexture()
+    if pushedTex then pushedTex:SetVertexColor(0.6, 0.05, 0.05) end
+    btn:SetScript("OnClick", onClick)
+    return btn
+end
+
+-- Forward declaration for refresh (defined after panel creation)
+local RefreshEditModePanel
+
 -- ---------------------------------------------------------------------------
 -- Panel creation — builds the settings panel (slider + 3 dropdowns)
 -- ---------------------------------------------------------------------------
@@ -171,11 +189,11 @@ local function CreateEditModePanel()
     local bDivider = f:CreateTexture(nil, "ARTWORK")
     bDivider:SetHeight(1)
     bDivider:SetColorTexture(1, 1, 1, 0.3)
-    bDivider:SetPoint("TOPLEFT", row4, "BOTTOMLEFT", 0, -16)
-    bDivider:SetPoint("TOPRIGHT", row4, "BOTTOMRIGHT", 0, -16)
+    bDivider:SetPoint("TOPLEFT", row4, "BOTTOMLEFT", 0, -12)
+    bDivider:SetPoint("TOPRIGHT", row4, "BOTTOMRIGHT", 0, -12)
 
-    local bStackTitle = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-    bStackTitle:SetPoint("TOP", bDivider, "BOTTOM", 0, -12)
+    local bStackTitle = f:CreateFontString(nil, "OVERLAY", "GameFontNormalMed3")
+    bStackTitle:SetPoint("TOP", bDivider, "BOTTOM", 0, -10)
     bStackTitle:SetText("Stacks")
 
     -- Row S1: Font Size
@@ -298,6 +316,25 @@ local function CreateEditModePanel()
         if ns.RefreshAllStacks then ns.RefreshAllStacks() end
     end, bsOffsetYSteppers)
 
+    -- Reset To Default button
+    local BUFFS_KEYS = { "maxPerRow", "growDirection", "align", "layout",
+        "buffs_stacks_fontSize", "buffs_stacks_position", "buffs_stacks_offsetX", "buffs_stacks_offsetY" }
+    local resetBtn = CreateRedButton(f, "Reset To Default", function()
+        for _, key in ipairs(BUFFS_KEYS) do
+            ns.db[key] = ns.DEFAULTS[key]
+        end
+        RefreshEditModePanel()
+        if ns.ApplyLayout then ns.ApplyLayout() end
+        if ns.RefreshAllStacks then ns.RefreshAllStacks() end
+    end)
+    local resetDivider = f:CreateTexture(nil, "ARTWORK")
+    resetDivider:SetHeight(1)
+    resetDivider:SetColorTexture(1, 1, 1, 0.3)
+    resetDivider:SetPoint("TOPLEFT", bsRow4, "BOTTOMLEFT", 0, -12)
+    resetDivider:SetPoint("TOPRIGHT", bsRow4, "BOTTOMRIGHT", 0, -12)
+    resetBtn:SetPoint("TOPLEFT", resetDivider, "BOTTOMLEFT", 0, -10)
+    resetBtn:SetPoint("TOPRIGHT", resetDivider, "BOTTOMRIGHT", 0, -10)
+
     f.growDropdown = dropdown
     f.alignDropdown = alignDropdown
     f.layoutDropdown = layoutDropdown
@@ -305,34 +342,32 @@ local function CreateEditModePanel()
     editModePanel = f
 
     local stacksExtraHeight = DIVIDER_GAP + bStackTitle:GetStringHeight() + 6 + (ROW_HEIGHT * 4)
-    f:SetSize(480, titleBottom + (ROW_HEIGHT * 4) + stacksExtraHeight + CONTENT_BOTTOM)
+    f:SetSize(480, titleBottom + (ROW_HEIGHT * 4) + stacksExtraHeight + CONTENT_BOTTOM + 52)
 end
 
 -- ---------------------------------------------------------------------------
 -- Panel refresh / show / hide
 -- ---------------------------------------------------------------------------
 
+-- Updates a WowStyle1Dropdown's visible text and default text.
+local function SetDropdownText(dropdown, text)
+    if not dropdown then return end
+    dropdown:SetDefaultText(text)
+    if dropdown.Text then dropdown.Text:SetText(text) end
+end
+
 -- Syncs all panel widgets with current saved variable values
-local function RefreshEditModePanel()
+RefreshEditModePanel = function()
     if not editModePanel then return end
     local db = ns.db
     local steppers = _G["EnhancedCDMPerRowStepper"]
     if steppers and steppers.Slider then
         steppers.Slider:SetValue(db.maxPerRow)
     end
-    if editModePanel.growDropdown then
-        editModePanel.growDropdown:SetDefaultText(ns.DIRECTION_DISPLAY[db.growDirection])
-    end
-    if editModePanel.alignDropdown then
-        editModePanel.alignDropdown:SetDefaultText(ns.ALIGN_DISPLAY[db.align])
-    end
-    if editModePanel.layoutDropdown then
-        editModePanel.layoutDropdown:SetDefaultText(ns.LAYOUT_DISPLAY[db.layout])
-    end
-    -- Refresh buffs stacks widgets
-    if editModePanel.bsPosDropdown then
-        editModePanel.bsPosDropdown:SetDefaultText(ns.HOTKEY_POSITION_DISPLAY[db.buffs_stacks_position])
-    end
+    SetDropdownText(editModePanel.growDropdown, ns.DIRECTION_DISPLAY[db.growDirection])
+    SetDropdownText(editModePanel.alignDropdown, ns.ALIGN_DISPLAY[db.align])
+    SetDropdownText(editModePanel.layoutDropdown, ns.LAYOUT_DISPLAY[db.layout])
+    SetDropdownText(editModePanel.bsPosDropdown, ns.HOTKEY_POSITION_DISPLAY[db.buffs_stacks_position])
     local bsfS = _G["EnhancedCDMBuffsStackFontStepper"]
     if bsfS and bsfS.Slider then bsfS.Slider:SetValue(db.buffs_stacks_fontSize) end
     local bsoxS = _G["EnhancedCDMBuffsStackOffsetXStepper"]
@@ -341,9 +376,7 @@ local function RefreshEditModePanel()
     if bsoyS and bsoyS.Slider then bsoyS.Slider:SetValue(db.buffs_stacks_offsetY) end
 end
 
--- Hides the Blizzard dialog's border/background.
--- DialogBorderTranslucentTemplate applies a NineSlice directly on the frame,
--- and may also use a child frame with its own NineSlice.
+-- Hides the Blizzard dialog's border/background (dialog.Border frame).
 local function HideDialogBorder(dialog)
     if dialog.Border then dialog.Border:Hide() end
 end
@@ -551,8 +584,10 @@ local function CreateBarsEditModePanel()
         if ns.ApplyBarsLayout then ns.ApplyBarsLayout() end
     end, steppers)
 
-    -- Forward-declared update function
+    -- Forward-declared update function, reset button, and divider
     local UpdateBarsPanel
+    local barsResetBtn
+    local barsResetDivider
 
     -- Setup dropdown menus (use generators so they rebuild on each open)
     orientDropdown:SetupMenu(function(owner, rootDescription)
@@ -625,18 +660,15 @@ local function CreateBarsEditModePanel()
         local showPerRow = (ns.db.bars_orientation == "HORIZONTAL")
 
         -- Update dropdown texts
-        orientDropdown:SetDefaultText(ns.ORIENTATION_DISPLAY[ns.db.bars_orientation])
-        layoutDropdown:SetDefaultText(ns.LAYOUT_DISPLAY[ns.db.bars_layout])
+        SetDropdownText(orientDropdown, ns.ORIENTATION_DISPLAY[ns.db.bars_orientation])
+        SetDropdownText(layoutDropdown, ns.LAYOUT_DISPLAY[ns.db.bars_layout])
         local alignText
         if ns.db.bars_orientation == "VERTICAL" then
             alignText = ns.BAR_ALIGN_V_DISPLAY[ns.db.bars_align] or "Down"
         else
             alignText = ns.BAR_ALIGN_H_DISPLAY[ns.db.bars_align] or "Center"
         end
-        alignDropdown:SetDefaultText(alignText)
-        if alignDropdown.Text then
-            alignDropdown.Text:SetText(alignText)
-        end
+        SetDropdownText(alignDropdown, alignText)
 
         -- Update slider
         local barsSteppers = _G["EnhancedCDMBarsPerRowStepper"]
@@ -664,13 +696,35 @@ local function CreateBarsEditModePanel()
             row4:SetPoint("TOPLEFT", lastRow, "BOTTOMLEFT", 0, 0)
             row4:SetPoint("TOPRIGHT", lastRow, "BOTTOMRIGHT", 0, 0)
             row4:Show()
+            lastRow = row4
             visibleRows = visibleRows + 1
         else
             row4:Hide()
         end
 
-        f:SetHeight(titleBottom + (ROW_HEIGHT * visibleRows) + CONTENT_BOTTOM)
+        barsResetDivider:ClearAllPoints()
+        barsResetDivider:SetPoint("TOPLEFT", lastRow, "BOTTOMLEFT", 0, -12)
+        barsResetDivider:SetPoint("TOPRIGHT", lastRow, "BOTTOMRIGHT", 0, -12)
+        barsResetBtn:ClearAllPoints()
+        barsResetBtn:SetPoint("TOPLEFT", barsResetDivider, "BOTTOMLEFT", 0, -10)
+        barsResetBtn:SetPoint("TOPRIGHT", barsResetDivider, "BOTTOMRIGHT", 0, -10)
+
+        f:SetHeight(titleBottom + (ROW_HEIGHT * visibleRows) + CONTENT_BOTTOM + 52)
     end
+
+    -- Reset To Default button
+    local BARS_KEYS = { "bars_orientation", "bars_layout", "bars_align", "bars_maxPerRow" }
+    barsResetDivider = f:CreateTexture(nil, "ARTWORK")
+    barsResetDivider:SetHeight(1)
+    barsResetDivider:SetColorTexture(1, 1, 1, 0.3)
+
+    barsResetBtn = CreateRedButton(f, "Reset To Default", function()
+        for _, key in ipairs(BARS_KEYS) do
+            ns.db[key] = ns.DEFAULTS[key]
+        end
+        UpdateBarsPanel()
+        if ns.ApplyBarsLayout then ns.ApplyBarsLayout() end
+    end)
 
     f.UpdateBarsPanel = UpdateBarsPanel
     barsEditModePanel = f
@@ -786,6 +840,8 @@ local function CreateHotkeysPanelForViewer(frameName, titleText, prefix)
     posDropdown:SetWidth(DROPDOWN_WIDTH)
 
     local UpdatePanel
+    local hotkeyResetBtn
+    local hotkeyResetDivider
 
     posDropdown:SetupMenu(function(owner, rootDescription)
         for _, pos in ipairs(POSITION_ORDER) do
@@ -865,7 +921,7 @@ local function CreateHotkeysPanelForViewer(frameName, titleText, prefix)
     divider:SetHeight(1)
     divider:SetColorTexture(1, 1, 1, 0.3)
 
-    local stackTitle = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    local stackTitle = f:CreateFontString(nil, "OVERLAY", "GameFontNormalMed3")
     stackTitle:SetText("Stacks")
 
     -- Row S1: Font Size
@@ -982,7 +1038,7 @@ local function CreateHotkeysPanelForViewer(frameName, titleText, prefix)
             sfSteppers.Slider:SetValue(ns.db[stacksPrefix .. "fontSize"])
         end
 
-        sPosDropdown:SetDefaultText(ns.HOTKEY_POSITION_DISPLAY[ns.db[stacksPrefix .. "position"]])
+        SetDropdownText(sPosDropdown, ns.HOTKEY_POSITION_DISPLAY[ns.db[stacksPrefix .. "position"]])
 
         local soxSteppers = _G[sOffsetXStepperName]
         if soxSteppers and soxSteppers.Slider then
@@ -1018,7 +1074,7 @@ local function CreateHotkeysPanelForViewer(frameName, titleText, prefix)
             fSteppers.Slider:SetValue(ns.db[prefix .. "fontSize"])
         end
 
-        posDropdown:SetDefaultText(ns.HOTKEY_POSITION_DISPLAY[ns.db[prefix .. "position"]])
+        SetDropdownText(posDropdown, ns.HOTKEY_POSITION_DISPLAY[ns.db[prefix .. "position"]])
 
         local oxSteppers = _G[offsetXStepperName]
         if oxSteppers and oxSteppers.Slider then
@@ -1080,11 +1136,11 @@ local function CreateHotkeysPanelForViewer(frameName, titleText, prefix)
 
         -- Stack Text divider + rows (always visible)
         divider:ClearAllPoints()
-        divider:SetPoint("TOPLEFT", lastRow, "BOTTOMLEFT", 0, -16)
-        divider:SetPoint("TOPRIGHT", lastRow, "BOTTOMRIGHT", 0, -16)
+        divider:SetPoint("TOPLEFT", lastRow, "BOTTOMLEFT", 0, -12)
+        divider:SetPoint("TOPRIGHT", lastRow, "BOTTOMRIGHT", 0, -12)
 
         stackTitle:ClearAllPoints()
-        stackTitle:SetPoint("TOP", divider, "BOTTOM", 0, -12)
+        stackTitle:SetPoint("TOP", divider, "BOTTOM", 0, -10)
 
         sRow1:ClearAllPoints()
         sRow1:SetPoint("TOP", stackTitle, "BOTTOM", 0, -6)
@@ -1107,9 +1163,36 @@ local function CreateHotkeysPanelForViewer(frameName, titleText, prefix)
         sRow4:SetPoint("TOPRIGHT", sRow3, "BOTTOMRIGHT", 0, 0)
         sRow4:Show()
 
+        hotkeyResetDivider:ClearAllPoints()
+        hotkeyResetDivider:SetPoint("TOPLEFT", sRow4, "BOTTOMLEFT", 0, -12)
+        hotkeyResetDivider:SetPoint("TOPRIGHT", sRow4, "BOTTOMRIGHT", 0, -12)
+        hotkeyResetBtn:ClearAllPoints()
+        hotkeyResetBtn:SetPoint("TOPLEFT", hotkeyResetDivider, "BOTTOMLEFT", 0, -10)
+        hotkeyResetBtn:SetPoint("TOPRIGHT", hotkeyResetDivider, "BOTTOMRIGHT", 0, -10)
+
         local stacksExtraHeight = DIVIDER_GAP + stackTitle:GetStringHeight() + 6 + (ROW_HEIGHT * 4)
-        f:SetHeight(titleBottom + (ROW_HEIGHT * visibleRows) + stacksExtraHeight + CONTENT_BOTTOM)
+        f:SetHeight(titleBottom + (ROW_HEIGHT * visibleRows) + stacksExtraHeight + CONTENT_BOTTOM + 52)
     end
+
+    -- Reset To Default button
+    local hotkeyKeys = {}
+    for key in pairs(ns.DEFAULTS) do
+        if key:find("^" .. prefix) or key:find("^" .. stacksPrefix) then
+            hotkeyKeys[#hotkeyKeys + 1] = key
+        end
+    end
+    hotkeyResetDivider = f:CreateTexture(nil, "ARTWORK")
+    hotkeyResetDivider:SetHeight(1)
+    hotkeyResetDivider:SetColorTexture(1, 1, 1, 0.3)
+
+    hotkeyResetBtn = CreateRedButton(f, "Reset To Default", function()
+        for _, key in ipairs(hotkeyKeys) do
+            ns.db[key] = ns.DEFAULTS[key]
+        end
+        UpdatePanel()
+        if ns.RefreshAllHotkeys then ns.RefreshAllHotkeys() end
+        if ns.RefreshAllStacks then ns.RefreshAllStacks() end
+    end)
 
     f.UpdatePanel = UpdatePanel
     UpdatePanel()
@@ -1245,28 +1328,18 @@ local function ApplySettingsBarPreview(entry)
     local db = ns.db
     if not db then return end
     local colors = db.bars_colors and db.bars_colors[entry.cooldownID]
-    for _, child in ipairs({ entry:GetChildren() }) do
-        if child:GetObjectType() == "StatusBar" then
-            local tex = child:GetStatusBarTexture()
-            if tex and tex.SetGradient then
-                if colors then
-                    tex:SetGradient("HORIZONTAL",
-                        CreateColor(colors.sR, colors.sG, colors.sB, 1),
-                        CreateColor(colors.eR, colors.eG, colors.eB, 1))
-                else
-                    tex:SetGradient("HORIZONTAL",
-                        CreateColor(1, 0.5, 0.25, 1),
-                        CreateColor(1, 0.5, 0.25, 1))
-                end
-            end
-            break
-        end
+    if colors then
+        if ns.ApplyBarGradient then ns.ApplyBarGradient(entry) end
+    else
+        if ns.ResetBarGradient then ns.ResetBarGradient(entry) end
     end
 end
 
 local function OpenBarColorPicker(id, colorKey, label, settingsEntry)
     local db = ns.db
     if not db then return end
+
+    local hadColors = (db.bars_colors[id] ~= nil)
 
     local function ensureColors()
         if not db.bars_colors[id] then
@@ -1294,8 +1367,14 @@ local function OpenBarColorPicker(id, colorKey, label, settingsEntry)
             ApplySettingsBarPreview(settingsEntry)
         end,
         cancelFunc = function(prev)
-            local colors = ensureColors()
-            colors[rKey], colors[gKey], colors[bKey] = prev.r, prev.g, prev.b
+            if hadColors then
+                local colors = db.bars_colors[id]
+                if colors then
+                    colors[rKey], colors[gKey], colors[bKey] = prev.r, prev.g, prev.b
+                end
+            else
+                db.bars_colors[id] = nil
+            end
             if ns.RefreshAllBarGradients then ns.RefreshAllBarGradients() end
             ApplySettingsBarPreview(settingsEntry)
         end,
@@ -1353,6 +1432,10 @@ local function HookSettingsBarPreview()
 end
 
 -- Wrap MenuUtil.CreateContextMenu to inject gradient options on bar entries
+-- NOTE: Direct replacement is required here because hooksecurefunc is a
+-- post-hook and cannot modify the generator callback before it executes.
+-- No alternative WoW API exists for injecting context menu items.
+-- This is a documented exception to the "always use hooksecurefunc" rule.
 local menuHooked = false
 local function HookBarContextMenu()
     if menuHooked then return end

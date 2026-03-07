@@ -125,23 +125,27 @@ local function GetHotkeyText(spellID, shorten)
 end
 
 -- Returns the settings prefix ("essential_hotkeys_" or "utility_hotkeys_") for a frame
+-- Reads from ns.* (kept in sync by TryInit) so tests can control comparison targets
 local function GetHotkeyPrefix(frame)
     local parent = frame and frame:GetParent()
-    if parent == essentialViewer then
+    if not parent then return nil end
+    if parent == ns.essentialViewer then
         return "essential_hotkeys_"
-    elseif parent == utilityViewer then
+    elseif parent == ns.utilityViewer then
         return "utility_hotkeys_"
     end
     return nil
 end
+ns._GetHotkeyPrefix = GetHotkeyPrefix
 
 local function GetStacksPrefix(frame)
     local parent = frame and frame:GetParent()
-    if parent == essentialViewer then
+    if not parent then return nil end
+    if parent == ns.essentialViewer then
         return "essential_stacks_"
-    elseif parent == utilityViewer then
+    elseif parent == ns.utilityViewer then
         return "utility_stacks_"
-    elseif parent == viewer then
+    elseif parent == ns.viewer then
         return "buffs_stacks_"
     end
     return nil
@@ -250,6 +254,8 @@ local function UpdateFrameStacks(frame)
     if not frame or not db then return end
     local cc = frame.ChargeCount
     if not cc then return end
+    local fs = cc.Current or cc
+    if not fs.SetFont then return end
     local prefix = GetStacksPrefix(frame)
     if not prefix then return end
 
@@ -261,10 +267,10 @@ local function UpdateFrameStacks(frame)
                      or ns.HOTKEY_POSITION_ANCHORS["BOTTOMRIGHT"]
     local justify  = ns.HOTKEY_POSITION_JUSTIFY[position] or "RIGHT"
 
-    cc:SetFont("Fonts\\ARIALN.TTF", fontSize, "OUTLINE")
+    fs:SetFont("Fonts\\ARIALN.TTF", fontSize, "OUTLINE")
     cc:ClearAllPoints()
     cc:SetPoint(anchor.point, frame, anchor.point, offsetX, offsetY)
-    cc:SetJustifyH(justify)
+    fs:SetJustifyH(justify)
 end
 
 local function RefreshAllStacks()
@@ -540,24 +546,8 @@ local function ApplyBarsLayout()
 
         for i = 1, n do
             local frame = barVisibleBuf[i]
-            local idx = i - 1
-            local col = idx % maxPerRow
-            local row = math.floor(idx / maxPerRow)
-
-            local alignOffset = 0
-            if isDynamic and align ~= "LEFT" then
-                local rowStart = row * maxPerRow
-                local barsOnRow = math.min(maxPerRow, totalBars - rowStart)
-                local rowWidth = barsOnRow * (barW + spacing) - spacing
-                if align == "CENTER" then
-                    alignOffset = (fullRowWidth - rowWidth) / 2
-                elseif align == "RIGHT" then
-                    alignOffset = fullRowWidth - rowWidth
-                end
-            end
-
-            local x = alignOffset + col * (barW + spacing)
-            local y = row * (barH + spacing)
+            local gridAlign = isDynamic and align or "LEFT"
+            local x, y = CalcGridPosition(i, maxPerRow, barW, barH, spacing, gridAlign, totalBars, fullRowWidth)
 
             frame._arTargetX = x
             frame._arTargetY = y
@@ -674,6 +664,8 @@ local function RefreshAllBarGradients()
     end
 end
 ns.RefreshAllBarGradients = RefreshAllBarGradients
+ns.ApplyBarGradient = ApplyBarGradient
+ns.ResetBarGradient = ResetBarGradient
 
 -- ---------------------------------------------------------------------------
 -- Mixin hooks — catch new frames, cooldown changes, and CDM settings updates
@@ -829,7 +821,6 @@ local function TryInit()
 
     if newBarViewer and newBarViewer ~= barViewer then
         barViewer = newBarViewer
-        ns.barViewer = barViewer
         barHookState.installed = false
         wipe(barHookedFrames)
         InstallBarsHooks()
@@ -893,7 +884,6 @@ local function TryInit()
         local foundBarViewer = _G["BuffBarCooldownViewer"]
         if foundBarViewer and foundBarViewer ~= barViewer then
             barViewer = foundBarViewer
-            ns.barViewer = barViewer
             barHookState.installed = false
             wipe(barHookedFrames)
             InstallBarsHooks()
@@ -1349,7 +1339,11 @@ eventFrame:SetScript("OnEvent", function(_, event, arg1)
         end
         for k, v in pairs(ns.DEFAULTS) do
             if EnhancedCDMDB[k] == nil then
-                EnhancedCDMDB[k] = v
+                if type(v) == "table" then
+                    EnhancedCDMDB[k] = {}
+                else
+                    EnhancedCDMDB[k] = v
+                end
             end
         end
         db = EnhancedCDMDB
