@@ -1277,28 +1277,31 @@ local function RegisterSlashCommands()
                     end
                 else
                     local posText = ns.HOTKEY_POSITION_DISPLAY[db[sPrefix .. "position"]] or db[sPrefix .. "position"]
-                    print("|cff00ccffEnhanced CDM — " .. label .. " Stacks:|r position " .. posText .. ", font size " .. db[sPrefix .. "fontSize"] .. ", offset " .. db[sPrefix .. "offsetX"] .. "," .. db[sPrefix .. "offsetY"])
-                    print("  /ecdm " .. cmd .. " stacks position <pos>    - Set position")
-                    print("  /ecdm " .. cmd .. " stacks fontsize <6-32>   - Set font size")
-                    print("  /ecdm " .. cmd .. " stacks offsetx <-40..40> - Horizontal offset")
-                    print("  /ecdm " .. cmd .. " stacks offsety <-40..40> - Vertical offset")
+                    print("|cff00ccffEnhanced CDM — " .. label .. " Stacks:|r")
+                    print("  " .. posText .. ", size " .. db[sPrefix .. "fontSize"] .. ", offset " .. db[sPrefix .. "offsetX"] .. "," .. db[sPrefix .. "offsetY"])
+                    print("|cffcccccc/ecdm " .. cmd .. " stacks position|r <pos> - Set position")
+                    print("|cffcccccc/ecdm " .. cmd .. " stacks fontsize|r <6-32> - Set font size")
+                    print("|cffcccccc/ecdm " .. cmd .. " stacks offsetx|r <-40..40> - Horizontal offset")
+                    print("|cffcccccc/ecdm " .. cmd .. " stacks offsety|r <-40..40> - Vertical offset")
                 end
             else
                 local alignDisplay = ns.ALIGN_DISPLAY[db[alignKey]] or db[alignKey]
                 local showText = db[prefix .. "show"] and "Shown" or "Hidden"
                 local posText = ns.HOTKEY_POSITION_DISPLAY[db[prefix .. "position"]] or db[prefix .. "position"]
                 local shortenText = db[prefix .. "shorten"] and "Shortened" or "Full"
-                print("|cff00ccffEnhanced CDM — " .. label .. ":|r align " .. alignDisplay .. ", hotkeys " .. showText .. ", position " .. posText .. ", font size " .. db[prefix .. "fontSize"] .. ", text " .. shortenText .. ", offset " .. db[prefix .. "offsetX"] .. "," .. db[prefix .. "offsetY"])
-                print("  /ecdm " .. cmd .. " align <l|c|r>     - Icon alignment")
-                print("  /ecdm " .. cmd .. " show              - Show keybinds")
-                print("  /ecdm " .. cmd .. " hide              - Hide keybinds")
-                print("  /ecdm " .. cmd .. " position <pos>    - Set position")
-                print("  /ecdm " .. cmd .. " fontsize <6-32>   - Set font size")
-                print("  /ecdm " .. cmd .. " shorten           - Shorten keybind text")
-                print("  /ecdm " .. cmd .. " noshorten         - Show full keybind text")
-                print("  /ecdm " .. cmd .. " offsetx <-40..40> - Horizontal offset")
-                print("  /ecdm " .. cmd .. " offsety <-40..40> - Vertical offset")
-                print("  /ecdm " .. cmd .. " stacks            - Stack text settings")
+                print("|cff00ccffEnhanced CDM — " .. label .. ":|r")
+                print("  " .. alignDisplay .. ", hotkeys " .. showText .. ", " .. posText)
+                print("  size " .. db[prefix .. "fontSize"] .. ", " .. shortenText .. ", offset " .. db[prefix .. "offsetX"] .. "," .. db[prefix .. "offsetY"])
+                print("|cffcccccc/ecdm " .. cmd .. " align|r <l|c|r> - Icon alignment")
+                print("|cffcccccc/ecdm " .. cmd .. " show|r - Show keybinds")
+                print("|cffcccccc/ecdm " .. cmd .. " hide|r - Hide keybinds")
+                print("|cffcccccc/ecdm " .. cmd .. " position|r <pos> - Set position")
+                print("|cffcccccc/ecdm " .. cmd .. " fontsize|r <6-32> - Set font size")
+                print("|cffcccccc/ecdm " .. cmd .. " shorten|r - Shorten keybind text")
+                print("|cffcccccc/ecdm " .. cmd .. " noshorten|r - Full keybind text")
+                print("|cffcccccc/ecdm " .. cmd .. " offsetx|r <-40..40> - Horizontal offset")
+                print("|cffcccccc/ecdm " .. cmd .. " offsety|r <-40..40> - Vertical offset")
+                print("|cffcccccc/ecdm " .. cmd .. " stacks|r - Stack text settings")
             end
         elseif cmd == "bars" then
             local subCmd, subArg = arg:match("^(%S+)%s*(.*)")
@@ -1368,9 +1371,9 @@ local function RegisterSlashCommands()
                                 id, c.sR, c.sG, c.sB, c.eR, c.eG, c.eB))
                         end
                     end
-                    print("  /ecdm bars gradient <id> <sR> <sG> <sB> <eR> <eG> <eB>")
-                    print("  /ecdm bars gradient <id> off")
-                    print("  /ecdm bars gradient clear")
+                    print("|cffcccccc/ecdm bars gradient|r <id> <sR> <sG> <sB> <eR> <eG> <eB>")
+                    print("|cffcccccc/ecdm bars gradient|r <id> off")
+                    print("|cffcccccc/ecdm bars gradient clear|r")
                 elseif gradArg == "clear" then
                     wipe(db.bars_colors)
                     if barViewer then
@@ -1414,12 +1417,13 @@ local function RegisterSlashCommands()
                 local layoutDisplay = ns.LAYOUT_DISPLAY[db.bars_layout]
                 local alignMap = db.bars_orientation == "VERTICAL" and ns.BAR_ALIGN_V_DISPLAY or ns.BAR_ALIGN_H_DISPLAY
                 local alignDisplay = alignMap[db.bars_align] or db.bars_align
-                print("|cff00ccffEnhanced CDM — Bars:|r " .. orientDisplay .. ", " .. layoutDisplay .. ", align " .. alignDisplay .. ", " .. db.bars_maxPerRow .. " per row")
-                print("  /ecdm bars orientation <vertical|horizontal>")
-                print("  /ecdm bars layout <static|dynamic>")
-                print("  /ecdm bars align <up|down|left|center|right>")
-                print("  /ecdm bars perrow <1-8>")
-                print("  /ecdm bars gradient                          - Bar color gradients")
+                print("|cff00ccffEnhanced CDM — Bars:|r")
+                print("  " .. orientDisplay .. ", " .. layoutDisplay .. ", " .. alignDisplay .. ", " .. db.bars_maxPerRow .. "/row")
+                print("|cffcccccc/ecdm bars orientation|r <vertical|horizontal>")
+                print("|cffcccccc/ecdm bars layout|r <static|dynamic>")
+                print("|cffcccccc/ecdm bars align|r <up|down|left|center|right>")
+                print("|cffcccccc/ecdm bars perrow|r <1-8>")
+                print("|cffcccccc/ecdm bars gradient|r - Bar color gradients")
             end
         elseif cmd == "buffs" then
             local subCmd, subArg = arg:match("^(%S+)%s*(.*)")
@@ -1474,41 +1478,46 @@ local function RegisterSlashCommands()
                 end
             else
                 local posText = ns.HOTKEY_POSITION_DISPLAY[db[sPrefix .. "position"]] or db[sPrefix .. "position"]
-                print("|cff00ccffEnhanced CDM — Buffs Stacks:|r position " .. posText .. ", font size " .. db[sPrefix .. "fontSize"] .. ", offset " .. db[sPrefix .. "offsetX"] .. "," .. db[sPrefix .. "offsetY"])
-                print("  /ecdm buffs position <pos>    - Set position")
-                print("  /ecdm buffs fontsize <6-32>   - Set font size")
-                print("  /ecdm buffs offsetx <-40..40> - Horizontal offset")
-                print("  /ecdm buffs offsety <-40..40> - Vertical offset")
+                print("|cff00ccffEnhanced CDM — Buffs Stacks:|r")
+                print("  " .. posText .. ", size " .. db[sPrefix .. "fontSize"] .. ", offset " .. db[sPrefix .. "offsetX"] .. "," .. db[sPrefix .. "offsetY"])
+                print("|cffcccccc/ecdm buffs position|r <pos> - Set position")
+                print("|cffcccccc/ecdm buffs fontsize|r <6-32> - Set font size")
+                print("|cffcccccc/ecdm buffs offsetx|r <-40..40> - Horizontal offset")
+                print("|cffcccccc/ecdm buffs offsety|r <-40..40> - Vertical offset")
             end
         else
             print("|cff00ccffEnhanced CDM|r v" .. (VERSION or "?"))
+            print(" ")
             local dirDisplay = ns.DIRECTION_DISPLAY[db.growDirection]
             local alignDisplay = ns.ALIGN_DISPLAY[db.align]
             local layoutDisplay = ns.LAYOUT_DISPLAY[db.layout]
-            print("  Icons: " .. db.maxPerRow .. " per row, grow " .. dirDisplay .. ", align " .. alignDisplay .. ", layout " .. layoutDisplay)
+            print("|cffccccccIcons:|r " .. db.maxPerRow .. "/row, " .. dirDisplay .. ", " .. alignDisplay .. ", " .. layoutDisplay)
             local bOrient = ns.ORIENTATION_DISPLAY[db.bars_orientation]
             local bLayout = ns.LAYOUT_DISPLAY[db.bars_layout]
             local bAlignMap = db.bars_orientation == "VERTICAL" and ns.BAR_ALIGN_V_DISPLAY or ns.BAR_ALIGN_H_DISPLAY
             local bAlign = bAlignMap[db.bars_align] or db.bars_align
-            print("  Bars:  " .. bOrient .. ", " .. bLayout .. ", align " .. bAlign .. ", " .. db.bars_maxPerRow .. " per row")
+            print("|cffccccccBars:|r " .. bOrient .. ", " .. bLayout .. ", " .. bAlign .. ", " .. db.bars_maxPerRow .. "/row")
             local eAlign = ns.ALIGN_DISPLAY[db.essential_align] or db.essential_align
             local eShow = db.essential_hotkeys_show and "Shown" or "Hidden"
             local ePos = ns.HOTKEY_POSITION_DISPLAY[db.essential_hotkeys_position] or db.essential_hotkeys_position
             local eShorten = db.essential_hotkeys_shorten and "Shortened" or "Full"
-            print("  Essential: align " .. eAlign .. ", hotkeys " .. eShow .. ", position " .. ePos .. ", font size " .. db.essential_hotkeys_fontSize .. ", text " .. eShorten)
+            print("|cffccccccEssential:|r " .. eAlign .. ", hotkeys " .. eShow)
+            print("  " .. ePos .. ", size " .. db.essential_hotkeys_fontSize .. ", " .. eShorten)
             local uAlign = ns.ALIGN_DISPLAY[db.utility_align] or db.utility_align
             local uShow = db.utility_hotkeys_show and "Shown" or "Hidden"
             local uPos = ns.HOTKEY_POSITION_DISPLAY[db.utility_hotkeys_position] or db.utility_hotkeys_position
             local uShorten = db.utility_hotkeys_shorten and "Shortened" or "Full"
-            print("  Utility:   align " .. uAlign .. ", hotkeys " .. uShow .. ", position " .. uPos .. ", font size " .. db.utility_hotkeys_fontSize .. ", text " .. uShorten)
-            print("  /ecdm rows <1-40>               - Icons per row")
-            print("  /ecdm grow <up|down>             - Row growth direction")
-            print("  /ecdm align <left|center|right>  - Row alignment")
-            print("  /ecdm layout <static|dynamic>    - Layout mode")
-            print("  /ecdm bars                       - Bars settings and commands")
-            print("  /ecdm essential                  - Essential hotkey settings")
-            print("  /ecdm utility                    - Utility hotkey settings")
-            print("  /ecdm buffs                      - Buffs stacks text settings")
+            print("|cffccccccUtility:|r " .. uAlign .. ", hotkeys " .. uShow)
+            print("  " .. uPos .. ", size " .. db.utility_hotkeys_fontSize .. ", " .. uShorten)
+            print(" ")
+            print("|cffcccccc/ecdm rows|r <1-40> - Icons per row")
+            print("|cffcccccc/ecdm grow|r <up|down> - Growth direction")
+            print("|cffcccccc/ecdm align|r <left|center|right> - Row alignment")
+            print("|cffcccccc/ecdm layout|r <static|dynamic> - Layout mode")
+            print("|cffcccccc/ecdm bars|r - Bars settings and commands")
+            print("|cffcccccc/ecdm essential|r - Essential hotkey settings")
+            print("|cffcccccc/ecdm utility|r - Utility hotkey settings")
+            print("|cffcccccc/ecdm buffs|r - Buffs stacks text settings")
         end
     end
 end
