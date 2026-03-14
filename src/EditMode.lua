@@ -1578,6 +1578,7 @@ local function ScheduleSettingsBarScan()
         ScanAndApplyBarPreviews(settingsFrame, 0)
     end)
 end
+ns.ScheduleSettingsBarScan = ScheduleSettingsBarScan
 
 local function HookSettingsBarPreview()
     if settingsPreviewHooked then return end
@@ -1648,12 +1649,6 @@ local function HookBarContextMenu()
         menuReopening = false
     end)
 end
-
--- Retry hook installation + refresh previews on data changes
-EventRegistry:RegisterCallback("CooldownViewerSettings.OnDataChanged", function()
-    HookSettingsBarPreview()
-    ScheduleSettingsBarScan()
-end, "EnhancedCDM_SettingsBarPreview")
 
 -- Hook when SetupEditMode is called (viewers exist at that point)
 local origSetupEditMode = ns.SetupEditMode

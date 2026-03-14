@@ -1007,29 +1007,13 @@ local function InstallMixinHooks()
         end
     end
 
-    -- Relayout when CDM settings change (icon size, padding, etc.)
-    if EventRegistry then
-        EventRegistry:RegisterCallback(
-            "CooldownViewerSettings.OnDataChanged",
-            function()
-                ScheduleLayout()
-                ScheduleBarsLayout()
-                ScheduleEssentialLayout()
-                ScheduleUtilityLayout()
-                ScheduleHotkeyRefresh()
-                ScheduleStacksRefresh()
-                RefreshAllBarGradients()
-            end,
-            ADDON_NAME
-        )
-    end
 end
 
 -- ---------------------------------------------------------------------------
 -- Hook installation — shared installer + per-viewer wrappers
 -- ---------------------------------------------------------------------------
 
-local function InstallViewerHooks(state, getViewer, hookChildFn, scheduleFn, applyFn, errorLabel)
+local function InstallViewerHooks(state, getViewer, hookChildFn, scheduleFn, applyFn, errorLabel, onRefreshLayout)
     if state.installed then return end
     state.installed = true
 
@@ -1040,6 +1024,13 @@ local function InstallViewerHooks(state, getViewer, hookChildFn, scheduleFn, app
         hooksecurefunc(v, "Layout", function()
             scheduleFn()
         end)
+
+        -- Hook RefreshLayout to catch CDM settings changes without tainting
+        -- the EventRegistry callback table (which would taint all listeners
+        -- including Blizzard's own RefreshLayout via secureexecuterange).
+        if onRefreshLayout and v.RefreshLayout then
+            hooksecurefunc(v, "RefreshLayout", onRefreshLayout)
+        end
 
         local children = { v:GetChildren() }
         for _, child in ipairs(children) do
@@ -1058,7 +1049,8 @@ end
 local function InstallHooks()
     InstallViewerHooks(hookState, function() return viewer end,
         HookFrame, ScheduleLayout, ApplyLayout,
-        "Hook installation failed — layout disabled.")
+        "Hook installation failed — layout disabled.",
+        function() ScheduleStacksRefresh() end)
 end
 
 local function InstallBarsHooks()
@@ -1067,19 +1059,25 @@ local function InstallBarsHooks()
             ApplyBarsLayout()
             RefreshAllBarGradients()
         end,
-        "Bar hook installation failed — bars layout disabled.")
+        "Bar hook installation failed — bars layout disabled.",
+        function()
+            RefreshAllBarGradients()
+            if ns.ScheduleSettingsBarScan then ns.ScheduleSettingsBarScan() end
+        end)
 end
 
 local function InstallEssentialHooks()
     InstallViewerHooks(essentialHookState, function() return essentialViewer end,
         HookEssentialFrame, ScheduleEssentialLayout, ApplyEssentialLayout,
-        "Essential hook installation failed — alignment disabled.")
+        "Essential hook installation failed — alignment disabled.",
+        function() ScheduleHotkeyRefresh(); ScheduleStacksRefresh() end)
 end
 
 local function InstallUtilityHooks()
     InstallViewerHooks(utilityHookState, function() return utilityViewer end,
         HookUtilityFrame, ScheduleUtilityLayout, ApplyUtilityLayout,
-        "Utility hook installation failed — alignment disabled.")
+        "Utility hook installation failed — alignment disabled.",
+        function() ScheduleHotkeyRefresh(); ScheduleStacksRefresh() end)
 end
 
 -- ---------------------------------------------------------------------------
