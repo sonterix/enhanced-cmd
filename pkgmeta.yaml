@@ -1,0 +1,7 @@
+package-as: EnhancedCDM
+manual-changelog: docs/CHANGELOG.md
+license-output: LICENSE
+ignore:
+  - docs
+  - tests
+  - README.md
