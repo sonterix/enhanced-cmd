@@ -1598,47 +1598,48 @@ local function HookSettingsBarPreview()
     settingsFrame:HookScript("OnShow", ScheduleSettingsBarScan)
 end
 
--- Wrap MenuUtil.CreateContextMenu to inject gradient options on bar entries
--- NOTE: Direct replacement is required here because hooksecurefunc is a
--- post-hook and cannot modify the generator callback before it executes.
--- No alternative WoW API exists for injecting context menu items.
--- This is a documented exception to the "always use hooksecurefunc" rule.
+-- Hook MenuUtil.CreateContextMenu to inject gradient options on bar entries.
+-- Uses hooksecurefunc (post-hook) to avoid tainting the global function.
+-- When a CDM bar menu is detected, the menu is reopened with gradient items.
 local menuHooked = false
+local menuReopening = false
 local function HookBarContextMenu()
     if menuHooked then return end
     if not MenuUtil or not MenuUtil.CreateContextMenu then return end
     menuHooked = true
 
-    local origCreate = MenuUtil.CreateContextMenu
-    MenuUtil.CreateContextMenu = function(owner, generator, ...)
+    hooksecurefunc(MenuUtil, "CreateContextMenu", function(owner, generator, ...)
+        if menuReopening then return end
         local db = ns.db
-        if owner and owner.cooldownID and owner.GetCooldownID and db then
-            local wrappedGenerator = function(ownerInner, rootDescription)
-                generator(ownerInner, rootDescription)
+        if not (owner and owner.cooldownID and owner.GetCooldownID and db) then return end
 
-                local id = ownerInner.cooldownID
-                if not id then return end
+        local id = owner.cooldownID
+        if not id then return end
 
-                rootDescription:CreateDivider()
-                rootDescription:CreateTitle("Gradient Colors")
-                rootDescription:CreateButton("Set Start Color", function()
-                    OpenBarColorPicker(id, "s", "Start", ownerInner)
+        local extraArgs = { ... }
+        local wrappedGenerator = function(ownerInner, rootDescription)
+            generator(ownerInner, rootDescription)
+
+            rootDescription:CreateDivider()
+            rootDescription:CreateTitle("Gradient Colors")
+            rootDescription:CreateButton("Set Start Color", function()
+                OpenBarColorPicker(id, "s", "Start", ownerInner)
+            end)
+            rootDescription:CreateButton("Set End Color", function()
+                OpenBarColorPicker(id, "e", "End", ownerInner)
+            end)
+            if db.bars_colors and db.bars_colors[id] then
+                rootDescription:CreateButton("Reset Gradient", function()
+                    db.bars_colors[id] = nil
+                    if ns.RefreshAllBarGradients then ns.RefreshAllBarGradients() end
+                    ApplySettingsBarPreview(ownerInner)
                 end)
-                rootDescription:CreateButton("Set End Color", function()
-                    OpenBarColorPicker(id, "e", "End", ownerInner)
-                end)
-                if db.bars_colors and db.bars_colors[id] then
-                    rootDescription:CreateButton("Reset Gradient", function()
-                        db.bars_colors[id] = nil
-                        if ns.RefreshAllBarGradients then ns.RefreshAllBarGradients() end
-                        ApplySettingsBarPreview(ownerInner)
-                    end)
-                end
             end
-            return origCreate(owner, wrappedGenerator, ...)
         end
-        return origCreate(owner, generator, ...)
-    end
+        menuReopening = true
+        MenuUtil.CreateContextMenu(owner, wrappedGenerator, unpack(extraArgs))
+        menuReopening = false
+    end)
 end
 
 -- Retry hook installation + refresh previews on data changes

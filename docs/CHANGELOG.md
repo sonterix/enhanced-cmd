@@ -6,6 +6,9 @@ Changed
   - Bars panel: "Grid" group (Orientation, Layout, Alignment, Per Row)
   - Essential/Utility panels: ungrouped (Alignment, Click Feedback), "Keybinds" group (Show, Shorten, Font Size, Position, offsets), "Stacks" group
 
+Fixed
+- ADDON_ACTION_BLOCKED taint from replacing MenuUtil.CreateContextMenu -- bar gradient context menu now uses hooksecurefunc post-hook with selective reopen instead of global function replacement
+
 ------------------------------------
 
 [0.13.0] - 2026-03-14
