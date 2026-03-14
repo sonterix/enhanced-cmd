@@ -225,6 +225,42 @@ describe("Slash command: essential/utility", function()
     end)
 end)
 
+describe("Slash command: essential/utility feedback", function()
+    it("enables essential feedback with on", function()
+        resetDb()
+        ns.db.essential_feedback_show = false
+        _startCapture(); slash("essential feedback on"); _stopCapture()
+        expect(ns.db.essential_feedback_show).to_be_truthy()
+    end)
+
+    it("disables essential feedback with off", function()
+        resetDb()
+        _startCapture(); slash("essential feedback off"); _stopCapture()
+        expect(ns.db.essential_feedback_show).to_be_falsy()
+    end)
+
+    it("enables utility feedback with on", function()
+        resetDb()
+        ns.db.utility_feedback_show = false
+        _startCapture(); slash("utility feedback on"); _stopCapture()
+        expect(ns.db.utility_feedback_show).to_be_truthy()
+    end)
+
+    it("disables utility feedback with off", function()
+        resetDb()
+        _startCapture(); slash("utility feedback off"); _stopCapture()
+        expect(ns.db.utility_feedback_show).to_be_falsy()
+    end)
+
+    it("prints status for feedback without argument", function()
+        resetDb()
+        _startCapture()
+        slash("essential feedback")
+        local output = _stopCapture()
+        expect(#output > 0).to_be_truthy()
+    end)
+end)
+
 describe("Slash command: default help", function()
     it("prints without error for empty input", function()
         resetDb()

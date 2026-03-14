@@ -883,6 +883,26 @@ local function CreateHotkeysPanelForViewer(frameName, titleText, prefix, alignKe
     showLabel:SetJustifyH("LEFT")
     showLabel:SetText("Show Keybinds")
 
+    -- Row F: Click Feedback checkbox (always visible)
+    local feedbackKey = prefix:gsub("hotkeys_$", "feedback_show")
+    local feedbackRow = CreateFrame("Frame", nil, scrollChild)
+    feedbackRow:SetHeight(ROW_HEIGHT)
+    feedbackRow:SetPoint("TOPLEFT", row1, "BOTTOMLEFT", 0, 0)
+    feedbackRow:SetPoint("TOPRIGHT", row1, "BOTTOMRIGHT", 0, 0)
+
+    local feedbackCheckbox = CreateFrame("CheckButton", frameName .. "FeedbackCheckbox", feedbackRow, "UICheckButtonTemplate")
+    feedbackCheckbox:SetPoint("LEFT", 0, 0)
+    feedbackCheckbox:SetSize(30, 30)
+
+    local feedbackLabel = feedbackRow:CreateFontString(nil, "OVERLAY", "GameFontHighlightMedium")
+    feedbackLabel:SetPoint("LEFT", feedbackCheckbox, "RIGHT", 5, 0)
+    feedbackLabel:SetJustifyH("LEFT")
+    feedbackLabel:SetText("Click Feedback")
+
+    feedbackCheckbox:SetScript("OnClick", function(self)
+        ns.db[feedbackKey] = self:GetChecked()
+    end)
+
     -- Row 2: Shorten Keybinds Text — conditional: visible when show=true
     local row2 = CreateFrame("Frame", nil, scrollChild)
     row2:SetHeight(ROW_HEIGHT)
@@ -1164,6 +1184,7 @@ local function CreateHotkeysPanelForViewer(frameName, titleText, prefix, alignKe
 
         local showHotkeys = ns.db[prefix .. "show"]
         checkbox:SetChecked(showHotkeys)
+        feedbackCheckbox:SetChecked(ns.db[feedbackKey])
         shortenCheckbox:SetChecked(ns.db[prefix .. "shorten"])
 
         local fSteppers = _G[stepperName]
@@ -1185,8 +1206,8 @@ local function CreateHotkeysPanelForViewer(frameName, titleText, prefix, alignKe
 
         UpdateStacksWidgets()
 
-        local visibleRows = 2  -- alignment row + show keybinds row always visible
-        local lastRow = row1
+        local visibleRows = 3  -- alignment row + show keybinds row + feedback row always visible
+        local lastRow = feedbackRow
 
         if showHotkeys then
             row2:ClearAllPoints()
@@ -1280,7 +1301,7 @@ local function CreateHotkeysPanelForViewer(frameName, titleText, prefix, alignKe
     end
 
     -- Reset To Default button
-    local hotkeyKeys = { alignKey }
+    local hotkeyKeys = { alignKey, feedbackKey }
     for key in pairs(ns.DEFAULTS) do
         if key:find("^" .. prefix) or key:find("^" .. stacksPrefix) then
             hotkeyKeys[#hotkeyKeys + 1] = key

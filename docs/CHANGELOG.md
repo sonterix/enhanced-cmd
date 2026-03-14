@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.13.0] - 2026-03-14
+
+### Added
+- **Click feedback for Essential and Utility cooldown icons** — when a keybind is pressed, the corresponding CDM icon shows a yellow glow border matching Blizzard's action bar pushed effect (key-down to key-up timing)
+  - Detection via `SetButtonState` hooks on action bar buttons — event-driven, zero polling, combat-safe
+  - Resolves spells through macros and spell overrides
+  - Per-viewer toggle: separate enable/disable for Essential and Utility
+  - "Click Feedback" checkbox in Edit Mode panels
+- `/ecdm essential feedback on|off` and `/ecdm utility feedback on|off` slash commands
+
 ## [0.12.0] - 2026-03-06
 
 ### Added

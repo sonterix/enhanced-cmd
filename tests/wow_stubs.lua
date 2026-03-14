@@ -27,6 +27,7 @@ function FrameMixin:GetFrameLevel() return self._frameLevel or 0 end
 function FrameMixin:SetSize(w, h) self._width = w; self._height = h end
 function FrameMixin:GetWidth() return self._width or 0 end
 function FrameMixin:GetHeight() return self._height or 0 end
+function FrameMixin:GetSize() return self._width or 0, self._height or 0 end
 function FrameMixin:GetScale() return self._scale or 1 end
 function FrameMixin:SetPoint(...) end
 function FrameMixin:ClearAllPoints() end
@@ -60,6 +61,18 @@ function FrameMixin:CreateFontString()
         Hide = function() end,
         GetStringHeight = function() return 14 end,
     }, {})
+end
+function FrameMixin:CreateTexture(name, layer)
+    return {
+        SetTexture = function() end,
+        SetAtlas = function() end,
+        SetSize = function() end,
+        SetPoint = function() end,
+        SetAllPoints = function() end,
+        Show = function() end,
+        Hide = function() end,
+        GetTexture = function() return nil end,
+    }
 end
 function FrameMixin:GetAttribute(key) return self._attributes and self._attributes[key] end
 function FrameMixin:SetAttribute(key, val)
@@ -132,6 +145,20 @@ end
 _G._stubBindingKeys = {}
 function GetBindingKey(binding)
     return _G._stubBindingKeys[binding]
+end
+
+-- GetActionInfo stub (configurable via _stubActionInfo)
+_G._stubActionInfo = {}
+function GetActionInfo(slot)
+    local info = _G._stubActionInfo[slot]
+    if info then return info.type, info.id end
+    return nil, nil
+end
+
+-- GetMacroSpell stub (configurable via _stubMacroSpells)
+_G._stubMacroSpells = {}
+function GetMacroSpell(macroID)
+    return _G._stubMacroSpells[macroID]
 end
 
 -- Event registry stub

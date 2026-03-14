@@ -30,6 +30,7 @@ ns.DEFAULTS          = {
     essential_stacks_position  = "BOTTOMRIGHT",
     essential_stacks_offsetX   = -2,
     essential_stacks_offsetY   = 2,
+    essential_feedback_show     = true,
     -- Utility
     utility_align              = "CENTER",
     utility_hotkeys_show       = false,
@@ -42,6 +43,7 @@ ns.DEFAULTS          = {
     utility_stacks_position    = "BOTTOMRIGHT",
     utility_stacks_offsetX     = -2,
     utility_stacks_offsetY     = 2,
+    utility_feedback_show       = true,
 }
 
 -- Display text for UI labels

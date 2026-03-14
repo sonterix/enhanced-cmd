@@ -24,6 +24,7 @@ local essentialLayoutTimer = nil
 local utilityLayoutTimer = nil
 local slotToBinding = {}
 local initTicker = nil
+local feedbackHookedButtons = {}
 
 -- ---------------------------------------------------------------------------
 -- Keybinding engine — maps spellID → formatted hotkey text
@@ -250,6 +251,127 @@ local function ScheduleHotkeyRefresh()
         hotkeyRefreshTimer = nil
         RefreshAllHotkeys()
     end)
+end
+
+-- ---------------------------------------------------------------------------
+-- Click feedback engine — mirrors action bar pushed state on CDM icons
+-- ---------------------------------------------------------------------------
+
+local PUSHED_RATIO = 51 / 45
+
+-- NOTE: GetMacroSpell return value may vary by WoW version. If macros don't
+-- resolve correctly in-game testing, check if it returns (name, ...) instead
+-- of spellID and switch to select(2, GetMacroSpell(id)) or use GetMacroInfo.
+local function GetSlotSpellID(slot)
+    if not slot or slot == 0 then return nil end
+    local actionType, id = GetActionInfo(slot)
+    if actionType == "spell" then
+        return id
+    elseif actionType == "macro" and id then
+        local spellID = GetMacroSpell(id)
+        return spellID
+    end
+    return nil
+end
+ns._GetSlotSpellID = GetSlotSpellID
+
+local function GetButtonSlot(btn)
+    return btn:GetAttribute("action")
+        or (btn.GetAction and btn:GetAction())
+        or btn.action
+end
+
+local function FindCDMIcon(spellID)
+    if not spellID then return nil end
+    local viewers = { ns.essentialViewer, ns.utilityViewer }
+    for _, v in ipairs(viewers) do
+        if v then
+            local children = { v:GetChildren() }
+            for _, child in ipairs(children) do
+                if child.cooldownID then
+                    local childSpell = (child.GetBaseSpellID and child:GetBaseSpellID())
+                        or child.rangeCheckSpellID
+                    if childSpell == spellID then
+                        return child
+                    end
+                    if C_Spell and C_Spell.GetOverrideSpell then
+                        local overrideID = C_Spell.GetOverrideSpell(childSpell or 0)
+                        if overrideID and overrideID == spellID then
+                            return child
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return nil
+end
+
+-- Reads from ns.* (kept in sync by TryInit) so tests can control comparison targets
+local function GetFeedbackPrefix(frame)
+    local parent = frame and frame:GetParent()
+    if not parent then return nil end
+    if parent == ns.essentialViewer then
+        return "essential_feedback_"
+    elseif parent == ns.utilityViewer then
+        return "utility_feedback_"
+    end
+    return nil
+end
+
+local function GetPushedOverlay(frame)
+    if frame._ecdmPushedTex then return frame._ecdmPushedTex end
+    local overlayFrame = CreateFrame("Frame", nil, frame)
+    overlayFrame:SetAllPoints(frame)
+    local level = frame:GetFrameLevel() + 10
+    if frame.Cooldown then
+        level = frame.Cooldown:GetFrameLevel() + 5
+    end
+    overlayFrame:SetFrameLevel(level)
+    local tex = overlayFrame:CreateTexture(nil, "OVERLAY")
+    tex:SetAtlas("UI-HUD-ActionBar-IconFrame-AddRow-Down")
+    local w, h = frame:GetSize()
+    tex:SetSize(w * PUSHED_RATIO, h * PUSHED_RATIO)
+    tex:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
+    tex:Hide()
+    frame._ecdmPushedTex = tex
+    return tex
+end
+
+local function OnButtonStateChanged(btn, state)
+    local slot = GetButtonSlot(btn)
+    local spellID = GetSlotSpellID(slot)
+    if not spellID then return end
+
+    local cdmIcon = FindCDMIcon(spellID)
+    if not cdmIcon then return end
+
+    local prefix = GetFeedbackPrefix(cdmIcon)
+    if not prefix or not db[prefix .. "show"] then
+        if cdmIcon._ecdmPushedTex then
+            cdmIcon._ecdmPushedTex:Hide()
+        end
+        return
+    end
+
+    local overlay = GetPushedOverlay(cdmIcon)
+    if state == "PUSHED" then
+        overlay:Show()
+    else
+        overlay:Hide()
+    end
+end
+
+local function InstallFeedbackHooks()
+    for _, info in ipairs(ACTION_BAR_BINDINGS) do
+        for i = 1, 12 do
+            local btn = _G[info.frame .. i]
+            if btn and not feedbackHookedButtons[btn] then
+                hooksecurefunc(btn, "SetButtonState", OnButtonStateChanged)
+                feedbackHookedButtons[btn] = true
+            end
+        end
+    end
 end
 
 -- ---------------------------------------------------------------------------
@@ -1018,6 +1140,7 @@ local function TryInit()
 
     if needHotkeyRefresh then
         RefreshAllHotkeys()
+        InstallFeedbackHooks()
     end
     if needStacksRefresh then
         RefreshAllStacks()
@@ -1089,6 +1212,7 @@ local function TryInit()
 
         if needHotkeyRefresh then
             RefreshAllHotkeys()
+            InstallFeedbackHooks()
         end
         if needStacksRefresh then
             RefreshAllStacks()
@@ -1230,6 +1354,21 @@ local function RegisterSlashCommands()
                 else
                     print("|cff00ccffEnhanced CDM:|r Usage: /ecdm " .. cmd .. " offsety <-40 to 40>")
                 end
+            elseif subCmd == "feedback" then
+                local fSubCmd = subArg:lower()
+                local feedbackKey = cmd == "essential" and "essential_feedback_show" or "utility_feedback_show"
+                if fSubCmd == "on" then
+                    db[feedbackKey] = true
+                    print("|cff00ccffEnhanced CDM:|r " .. label .. " click feedback enabled")
+                elseif fSubCmd == "off" then
+                    db[feedbackKey] = false
+                    print("|cff00ccffEnhanced CDM:|r " .. label .. " click feedback disabled")
+                else
+                    local statusText = db[feedbackKey] and "Enabled" or "Disabled"
+                    print("|cff00ccffEnhanced CDM:|r " .. label .. " click feedback: " .. statusText)
+                    print("|cffcccccc/ecdm " .. cmd .. " feedback on|r - Enable click feedback")
+                    print("|cffcccccc/ecdm " .. cmd .. " feedback off|r - Disable click feedback")
+                end
             elseif subCmd == "stacks" then
                 local sPrefix = cmd == "essential" and "essential_stacks_" or "utility_stacks_"
                 local sCmd, sArg = subArg:match("^(%S+)%s*(.*)")
@@ -1289,9 +1428,12 @@ local function RegisterSlashCommands()
                 local showText = db[prefix .. "show"] and "Shown" or "Hidden"
                 local posText = ns.HOTKEY_POSITION_DISPLAY[db[prefix .. "position"]] or db[prefix .. "position"]
                 local shortenText = db[prefix .. "shorten"] and "Shortened" or "Full"
+                local feedbackKey = cmd == "essential" and "essential_feedback_show" or "utility_feedback_show"
+                local feedbackText = db[feedbackKey] and "On" or "Off"
                 print("|cff00ccffEnhanced CDM — " .. label .. ":|r")
                 print("  " .. alignDisplay .. ", hotkeys " .. showText .. ", " .. posText)
                 print("  size " .. db[prefix .. "fontSize"] .. ", " .. shortenText .. ", offset " .. db[prefix .. "offsetX"] .. "," .. db[prefix .. "offsetY"])
+                print("  feedback " .. feedbackText)
                 print("|cffcccccc/ecdm " .. cmd .. " align|r <l|c|r> - Icon alignment")
                 print("|cffcccccc/ecdm " .. cmd .. " show|r - Show keybinds")
                 print("|cffcccccc/ecdm " .. cmd .. " hide|r - Hide keybinds")
@@ -1301,6 +1443,7 @@ local function RegisterSlashCommands()
                 print("|cffcccccc/ecdm " .. cmd .. " noshorten|r - Full keybind text")
                 print("|cffcccccc/ecdm " .. cmd .. " offsetx|r <-40..40> - Horizontal offset")
                 print("|cffcccccc/ecdm " .. cmd .. " offsety|r <-40..40> - Vertical offset")
+                print("|cffcccccc/ecdm " .. cmd .. " feedback|r <on|off> - Click feedback")
                 print("|cffcccccc/ecdm " .. cmd .. " stacks|r - Stack text settings")
             end
         elseif cmd == "bars" then
