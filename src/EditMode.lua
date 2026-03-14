@@ -1613,6 +1613,13 @@ local function HookBarContextMenu()
         local db = ns.db
         if not (owner and owner.cooldownID and owner.GetCooldownID and db) then return end
 
+        -- Only inject gradient options for bar entries (have a StatusBar child)
+        local isBar = false
+        for _, sub in ipairs({ owner:GetChildren() }) do
+            if sub:GetObjectType() == "StatusBar" then isBar = true; break end
+        end
+        if not isBar then return end
+
         local id = owner.cooldownID
         if not id then return end
 
