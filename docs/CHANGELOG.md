@@ -1,3 +1,13 @@
+[0.13.5] - 2026-03-14
+
+Changed
+- Edit Mode settings panels reorganized into logical groups with left-aligned section headers
+  - Buffs panel: "Grid" group (Layout, Per Row, Growth, Alignment) and "Stacks" group
+  - Bars panel: "Grid" group (Orientation, Layout, Alignment, Per Row)
+  - Essential/Utility panels: ungrouped (Alignment, Click Feedback), "Keybinds" group (Show, Shorten, Font Size, Position, offsets), "Stacks" group
+
+------------------------------------
+
 [0.13.0] - 2026-03-14
 
 Added

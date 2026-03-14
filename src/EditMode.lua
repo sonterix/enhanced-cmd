@@ -65,11 +65,18 @@ local function CreateEditModePanel()
 
     local titleBottom = CONTENT_TOP + title:GetStringHeight() + 10
 
+    -- Grid group title
+    local gridTitle = f:CreateFontString(nil, "OVERLAY", "GameFontNormalMed3")
+    gridTitle:SetPoint("TOPLEFT", f, "TOPLEFT", CONTENT_LEFT, -titleBottom)
+    gridTitle:SetText("Grid")
+
+    local gridTitleBottom = titleBottom + gridTitle:GetStringHeight() + 6
+
     -- Row 1: Layout Mode — [label] [dropdown]
     local row1 = CreateFrame("Frame", nil, f)
     row1:SetHeight(ROW_HEIGHT)
-    row1:SetPoint("TOPLEFT", f, "TOPLEFT", CONTENT_LEFT, -titleBottom)
-    row1:SetPoint("TOPRIGHT", f, "TOPRIGHT", -CONTENT_LEFT, -titleBottom)
+    row1:SetPoint("TOPLEFT", f, "TOPLEFT", CONTENT_LEFT, -gridTitleBottom)
+    row1:SetPoint("TOPRIGHT", f, "TOPRIGHT", -CONTENT_LEFT, -gridTitleBottom)
 
     local layoutLabel = row1:CreateFontString(nil, "OVERLAY", "GameFontHighlightMedium")
     layoutLabel:SetPoint("LEFT", 0, 0)
@@ -193,7 +200,7 @@ local function CreateEditModePanel()
     bDivider:SetPoint("TOPRIGHT", row4, "BOTTOMRIGHT", 0, -12)
 
     local bStackTitle = f:CreateFontString(nil, "OVERLAY", "GameFontNormalMed3")
-    bStackTitle:SetPoint("TOP", bDivider, "BOTTOM", 0, -10)
+    bStackTitle:SetPoint("TOPLEFT", bDivider, "BOTTOMLEFT", 0, -10)
     bStackTitle:SetText("Stacks")
 
     -- Row S1: Font Size
@@ -342,7 +349,7 @@ local function CreateEditModePanel()
     editModePanel = f
 
     local stacksExtraHeight = DIVIDER_GAP + bStackTitle:GetStringHeight() + 6 + (ROW_HEIGHT * 4)
-    f:SetSize(480, titleBottom + (ROW_HEIGHT * 4) + stacksExtraHeight + CONTENT_BOTTOM + 52)
+    f:SetSize(480, gridTitleBottom + (ROW_HEIGHT * 4) + stacksExtraHeight + CONTENT_BOTTOM + 52)
 end
 
 -- ---------------------------------------------------------------------------
@@ -513,11 +520,18 @@ local function CreateBarsEditModePanel()
 
     local titleBottom = CONTENT_TOP + title:GetStringHeight() + 10
 
+    -- Grid group title
+    local gridTitle = f:CreateFontString(nil, "OVERLAY", "GameFontNormalMed3")
+    gridTitle:SetPoint("TOPLEFT", f, "TOPLEFT", CONTENT_LEFT, -titleBottom)
+    gridTitle:SetText("Grid")
+
+    local gridTitleBottom = titleBottom + gridTitle:GetStringHeight() + 6
+
     -- Row 1: Orientation
     local row1 = CreateFrame("Frame", nil, f)
     row1:SetHeight(ROW_HEIGHT)
-    row1:SetPoint("TOPLEFT", f, "TOPLEFT", CONTENT_LEFT, -titleBottom)
-    row1:SetPoint("TOPRIGHT", f, "TOPRIGHT", -CONTENT_LEFT, -titleBottom)
+    row1:SetPoint("TOPLEFT", f, "TOPLEFT", CONTENT_LEFT, -gridTitleBottom)
+    row1:SetPoint("TOPRIGHT", f, "TOPRIGHT", -CONTENT_LEFT, -gridTitleBottom)
 
     local orientLabel = row1:CreateFontString(nil, "OVERLAY", "GameFontHighlightMedium")
     orientLabel:SetPoint("LEFT", 0, 0)
@@ -709,7 +723,7 @@ local function CreateBarsEditModePanel()
         barsResetBtn:SetPoint("TOPLEFT", barsResetDivider, "BOTTOMLEFT", 0, -10)
         barsResetBtn:SetPoint("TOPRIGHT", barsResetDivider, "BOTTOMRIGHT", 0, -10)
 
-        f:SetHeight(titleBottom + (ROW_HEIGHT * visibleRows) + CONTENT_BOTTOM + 52)
+        f:SetHeight(gridTitleBottom + (ROW_HEIGHT * visibleRows) + CONTENT_BOTTOM + 52)
     end
 
     -- Reset To Default button
@@ -868,27 +882,12 @@ local function CreateHotkeysPanelForViewer(frameName, titleText, prefix, alignKe
         end
     end)
 
-    -- Row 1: Show Keybinds checkbox
-    local row1 = CreateFrame("Frame", nil, scrollChild)
-    row1:SetHeight(ROW_HEIGHT)
-    row1:SetPoint("TOPLEFT", row0, "BOTTOMLEFT", 0, 0)
-    row1:SetPoint("TOPRIGHT", row0, "BOTTOMRIGHT", 0, 0)
-
-    local checkbox = CreateFrame("CheckButton", frameName .. "Checkbox", row1, "UICheckButtonTemplate")
-    checkbox:SetPoint("LEFT", 0, 0)
-    checkbox:SetSize(30, 30)
-
-    local showLabel = row1:CreateFontString(nil, "OVERLAY", "GameFontHighlightMedium")
-    showLabel:SetPoint("LEFT", checkbox, "RIGHT", 5, 0)
-    showLabel:SetJustifyH("LEFT")
-    showLabel:SetText("Show Keybinds")
-
-    -- Row F: Click Feedback checkbox (always visible)
+    -- Click Feedback checkbox (always visible, ungrouped)
     local feedbackKey = prefix:gsub("hotkeys_$", "feedback_show")
     local feedbackRow = CreateFrame("Frame", nil, scrollChild)
     feedbackRow:SetHeight(ROW_HEIGHT)
-    feedbackRow:SetPoint("TOPLEFT", row1, "BOTTOMLEFT", 0, 0)
-    feedbackRow:SetPoint("TOPRIGHT", row1, "BOTTOMRIGHT", 0, 0)
+    feedbackRow:SetPoint("TOPLEFT", row0, "BOTTOMLEFT", 0, 0)
+    feedbackRow:SetPoint("TOPRIGHT", row0, "BOTTOMRIGHT", 0, 0)
 
     local feedbackCheckbox = CreateFrame("CheckButton", frameName .. "FeedbackCheckbox", feedbackRow, "UICheckButtonTemplate")
     feedbackCheckbox:SetPoint("LEFT", 0, 0)
@@ -902,6 +901,30 @@ local function CreateHotkeysPanelForViewer(frameName, titleText, prefix, alignKe
     feedbackCheckbox:SetScript("OnClick", function(self)
         ns.db[feedbackKey] = self:GetChecked()
     end)
+
+    -- Keybinds group header
+    local keybindsDivider = scrollChild:CreateTexture(nil, "ARTWORK")
+    keybindsDivider:SetHeight(1)
+    keybindsDivider:SetColorTexture(1, 1, 1, 0.3)
+    keybindsDivider:SetPoint("TOPLEFT", feedbackRow, "BOTTOMLEFT", 0, -12)
+    keybindsDivider:SetPoint("TOPRIGHT", feedbackRow, "BOTTOMRIGHT", 0, -12)
+
+    local keybindsTitle = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormalMed3")
+    keybindsTitle:SetPoint("TOPLEFT", keybindsDivider, "BOTTOMLEFT", 0, -10)
+    keybindsTitle:SetText("Keybinds")
+
+    -- Row 1: Show Keybinds checkbox
+    local row1 = CreateFrame("Frame", nil, scrollChild)
+    row1:SetHeight(ROW_HEIGHT)
+
+    local checkbox = CreateFrame("CheckButton", frameName .. "Checkbox", row1, "UICheckButtonTemplate")
+    checkbox:SetPoint("LEFT", 0, 0)
+    checkbox:SetSize(30, 30)
+
+    local showLabel = row1:CreateFontString(nil, "OVERLAY", "GameFontHighlightMedium")
+    showLabel:SetPoint("LEFT", checkbox, "RIGHT", 5, 0)
+    showLabel:SetJustifyH("LEFT")
+    showLabel:SetText("Show Keybinds")
 
     -- Row 2: Shorten Keybinds Text — conditional: visible when show=true
     local row2 = CreateFrame("Frame", nil, scrollChild)
@@ -1206,8 +1229,15 @@ local function CreateHotkeysPanelForViewer(frameName, titleText, prefix, alignKe
 
         UpdateStacksWidgets()
 
-        local visibleRows = 3  -- alignment row + show keybinds row + feedback row always visible
-        local lastRow = feedbackRow
+        local visibleRows = 3  -- alignment + feedback + show keybinds always visible
+
+        -- Keybinds group: anchor row1 below keybinds title
+        row1:ClearAllPoints()
+        row1:SetPoint("TOP", keybindsTitle, "BOTTOM", 0, -6)
+        row1:SetPoint("LEFT", scrollChild, "LEFT", CONTENT_LEFT, 0)
+        row1:SetPoint("RIGHT", scrollChild, "RIGHT", -CONTENT_LEFT, 0)
+
+        local lastRow = row1
 
         if showHotkeys then
             row2:ClearAllPoints()
@@ -1258,7 +1288,7 @@ local function CreateHotkeysPanelForViewer(frameName, titleText, prefix, alignKe
         divider:SetPoint("TOPRIGHT", lastRow, "BOTTOMRIGHT", 0, -12)
 
         stackTitle:ClearAllPoints()
-        stackTitle:SetPoint("TOP", divider, "BOTTOM", 0, -10)
+        stackTitle:SetPoint("TOPLEFT", divider, "BOTTOMLEFT", 0, -10)
 
         sRow1:ClearAllPoints()
         sRow1:SetPoint("TOP", stackTitle, "BOTTOM", 0, -6)
@@ -1288,8 +1318,9 @@ local function CreateHotkeysPanelForViewer(frameName, titleText, prefix, alignKe
         hotkeyResetBtn:SetPoint("TOPLEFT", hotkeyResetDivider, "BOTTOMLEFT", 0, -10)
         hotkeyResetBtn:SetPoint("TOPRIGHT", hotkeyResetDivider, "BOTTOMRIGHT", 0, -10)
 
+        local keybindsHeaderHeight = DIVIDER_GAP + keybindsTitle:GetStringHeight() + 6
         local stacksExtraHeight = DIVIDER_GAP + stackTitle:GetStringHeight() + 6 + (ROW_HEIGHT * 4)
-        local contentHeight = (ROW_HEIGHT * visibleRows) + stacksExtraHeight + 52
+        local contentHeight = (ROW_HEIGHT * visibleRows) + keybindsHeaderHeight + stacksExtraHeight + 52
         scrollChild:SetHeight(contentHeight)
 
         -- Set panel height for standalone mode (embedded mode ignores this)
