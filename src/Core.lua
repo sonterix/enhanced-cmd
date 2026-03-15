@@ -1093,7 +1093,10 @@ local function InstallHooks()
     InstallViewerHooks(hookState, function() return viewer end,
         HookFrame, ScheduleLayout, ApplyLayout,
         "Hook installation failed — layout disabled.",
-        function() ScheduleStacksRefresh() end)
+        function()
+            ScheduleStacksRefresh()
+            if ns.RefreshEditModePanel then ns.RefreshEditModePanel() end
+        end)
 end
 
 local function InstallBarsHooks()
@@ -1113,14 +1116,20 @@ local function InstallEssentialHooks()
     InstallViewerHooks(essentialHookState, function() return essentialViewer end,
         HookEssentialFrame, ScheduleEssentialLayout, ApplyEssentialLayout,
         "Essential hook installation failed — alignment disabled.",
-        function() ScheduleHotkeyRefresh(); ScheduleStacksRefresh() end)
+        function()
+            ScheduleHotkeyRefresh(); ScheduleStacksRefresh()
+            if ns.RefreshEssentialPanel then ns.RefreshEssentialPanel() end
+        end)
 end
 
 local function InstallUtilityHooks()
     InstallViewerHooks(utilityHookState, function() return utilityViewer end,
         HookUtilityFrame, ScheduleUtilityLayout, ApplyUtilityLayout,
         "Utility hook installation failed — alignment disabled.",
-        function() ScheduleHotkeyRefresh(); ScheduleStacksRefresh() end)
+        function()
+            ScheduleHotkeyRefresh(); ScheduleStacksRefresh()
+            if ns.RefreshUtilityPanel then ns.RefreshUtilityPanel() end
+        end)
 end
 
 -- ---------------------------------------------------------------------------

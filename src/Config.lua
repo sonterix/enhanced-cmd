@@ -54,6 +54,10 @@ ns.ORIENTATION_DISPLAY = { VERTICAL = "Vertical", HORIZONTAL = "Horizontal" }
 ns.BAR_ALIGN_V_DISPLAY = { DOWN = "Down", UP = "Up" }
 ns.BAR_ALIGN_H_DISPLAY = { LEFT = "Left", CENTER = "Center", RIGHT = "Right" }
 
+-- Vertical-orientation display maps for buffs / CDs
+ns.DIRECTION_V_DISPLAY = { DOWN = "Right", UP = "Left" }
+ns.ALIGN_V_DISPLAY     = { LEFT = "Top", CENTER = "Center", RIGHT = "Bottom" }
+
 ns.HOTKEY_POSITION_DISPLAY = {
     TOPLEFT = "Top Left", TOP = "Top", TOPRIGHT = "Top Right",
     RIGHT = "Right", BOTTOMRIGHT = "Bottom Right", BOTTOM = "Bottom",

@@ -17,6 +17,10 @@ local CONTENT_BOTTOM = 20
 local ROW_HEIGHT     = 34
 local DIVIDER_GAP    = 28
 
+local function IsViewerVertical(v)
+    return v and v.IsHorizontal and not v:IsHorizontal()
+end
+
 local POSITION_ORDER = { "TOPLEFT", "TOP", "TOPRIGHT", "RIGHT", "BOTTOMRIGHT", "BOTTOM", "BOTTOMLEFT", "LEFT", "CENTER" }
 
 -- Embed-into-dialog constants
@@ -102,7 +106,7 @@ local function CreateEditModePanel()
         end
     end)
 
-    -- Row 2: Icons Per Row
+    -- Row 2: Icons Per Row / Per Column (label changes with orientation)
     local row2 = CreateFrame("Frame", nil, f)
     row2:SetHeight(ROW_HEIGHT)
     row2:SetPoint("TOPLEFT", row1, "BOTTOMLEFT", 0, 0)
@@ -112,7 +116,7 @@ local function CreateEditModePanel()
     perRowLabel:SetPoint("LEFT", 0, 0)
     perRowLabel:SetWidth(LABEL_WIDTH)
     perRowLabel:SetJustifyH("LEFT")
-    perRowLabel:SetText("Per Row")
+    perRowLabel:SetText(IsViewerVertical(ns.viewer) and "# Columns" or "# Rows")
 
     local steppers = CreateFrame("Frame", "EnhancedCDMPerRowStepper", row2, "MinimalSliderWithSteppersTemplate")
     steppers:SetPoint("LEFT", perRowLabel, "RIGHT", 5, 0)
@@ -142,11 +146,13 @@ local function CreateEditModePanel()
     local dropdown = CreateFrame("DropdownButton", "EnhancedCDMGrowDropdown", row3, "WowStyle1DropdownTemplate")
     dropdown:SetPoint("LEFT", growLabel, "RIGHT", 5, 0)
     dropdown:SetWidth(DROPDOWN_WIDTH)
-    dropdown:SetDefaultText(ns.DIRECTION_DISPLAY[db.growDirection])
+    local growMap = IsViewerVertical(ns.viewer) and ns.DIRECTION_V_DISPLAY or ns.DIRECTION_DISPLAY
+    dropdown:SetDefaultText(growMap[db.growDirection])
     dropdown:SetupMenu(function(owner, rootDescription)
+        local map = IsViewerVertical(ns.viewer) and ns.DIRECTION_V_DISPLAY or ns.DIRECTION_DISPLAY
         for _, dir in ipairs({ "DOWN", "UP" }) do
             rootDescription:CreateRadio(
-                ns.DIRECTION_DISPLAY[dir],
+                map[dir],
                 function() return ns.db.growDirection == dir end,
                 function()
                     ns.db.growDirection = dir
@@ -172,11 +178,13 @@ local function CreateEditModePanel()
     local alignDropdown = CreateFrame("DropdownButton", "EnhancedCDMAlignDropdown", row4, "WowStyle1DropdownTemplate")
     alignDropdown:SetPoint("LEFT", alignLabel, "RIGHT", 5, 0)
     alignDropdown:SetWidth(DROPDOWN_WIDTH)
-    alignDropdown:SetDefaultText(ns.ALIGN_DISPLAY[db.align])
+    local alignMap = IsViewerVertical(ns.viewer) and ns.ALIGN_V_DISPLAY or ns.ALIGN_DISPLAY
+    alignDropdown:SetDefaultText(alignMap[db.align])
     alignDropdown:SetupMenu(function(owner, rootDescription)
+        local map = IsViewerVertical(ns.viewer) and ns.ALIGN_V_DISPLAY or ns.ALIGN_DISPLAY
         for _, a in ipairs({ "LEFT", "CENTER", "RIGHT" }) do
             rootDescription:CreateRadio(
-                ns.ALIGN_DISPLAY[a],
+                map[a],
                 function() return ns.db.align == a end,
                 function()
                     ns.db.align = a
@@ -346,6 +354,7 @@ local function CreateEditModePanel()
     f.alignDropdown = alignDropdown
     f.layoutDropdown = layoutDropdown
     f.bsPosDropdown = bsPosDropdown
+    f.perRowLabel = perRowLabel
     editModePanel = f
 
     local stacksExtraHeight = DIVIDER_GAP + bStackTitle:GetStringHeight() + 6 + (ROW_HEIGHT * 4)
@@ -367,12 +376,18 @@ end
 RefreshEditModePanel = function()
     if not editModePanel then return end
     local db = ns.db
+    local isVert = IsViewerVertical(ns.viewer)
     local steppers = _G["EnhancedCDMPerRowStepper"]
     if steppers and steppers.Slider then
         steppers.Slider:SetValue(db.maxPerRow)
     end
-    SetDropdownText(editModePanel.growDropdown, ns.DIRECTION_DISPLAY[db.growDirection])
-    SetDropdownText(editModePanel.alignDropdown, ns.ALIGN_DISPLAY[db.align])
+    if editModePanel.perRowLabel then
+        editModePanel.perRowLabel:SetText(isVert and "# Columns" or "# Rows")
+    end
+    local growMap = isVert and ns.DIRECTION_V_DISPLAY or ns.DIRECTION_DISPLAY
+    SetDropdownText(editModePanel.growDropdown, growMap[db.growDirection])
+    local alignMap = isVert and ns.ALIGN_V_DISPLAY or ns.ALIGN_DISPLAY
+    SetDropdownText(editModePanel.alignDropdown, alignMap[db.align])
     SetDropdownText(editModePanel.layoutDropdown, ns.LAYOUT_DISPLAY[db.layout])
     SetDropdownText(editModePanel.bsPosDropdown, ns.HOTKEY_POSITION_DISPLAY[db.buffs_stacks_position])
     local bsfS = _G["EnhancedCDMBuffsStackFontStepper"]
@@ -381,6 +396,9 @@ RefreshEditModePanel = function()
     if bsoxS and bsoxS.Slider then bsoxS.Slider:SetValue(db.buffs_stacks_offsetX) end
     local bsoyS = _G["EnhancedCDMBuffsStackOffsetYStepper"]
     if bsoyS and bsoyS.Slider then bsoyS.Slider:SetValue(db.buffs_stacks_offsetY) end
+end
+ns.RefreshEditModePanel = function()
+    if RefreshEditModePanel then RefreshEditModePanel() end
 end
 
 -- Hides the Blizzard dialog's border/background (dialog.Border frame).
@@ -769,7 +787,7 @@ end
 -- Hotkeys panel factory — creates a checkbox + position + font size panel
 -- ---------------------------------------------------------------------------
 
-local function CreateHotkeysPanelForViewer(frameName, titleText, prefix, alignKey, applyAlignFn)
+local function CreateHotkeysPanelForViewer(frameName, titleText, prefix, alignKey, applyAlignFn, getViewer)
     local db = ns.db
 
     local f = CreateFrame("Frame", frameName, UIParent)
@@ -867,11 +885,13 @@ local function CreateHotkeysPanelForViewer(frameName, titleText, prefix, alignKe
     local alignDropdown = CreateFrame("DropdownButton", frameName .. "AlignDropdown", row0, "WowStyle1DropdownTemplate")
     alignDropdown:SetPoint("LEFT", alignLabel, "RIGHT", 5, 0)
     alignDropdown:SetWidth(DROPDOWN_WIDTH)
-    alignDropdown:SetDefaultText(ns.ALIGN_DISPLAY[db[alignKey]])
+    local initAlignMap = (getViewer and IsViewerVertical(getViewer())) and ns.ALIGN_V_DISPLAY or ns.ALIGN_DISPLAY
+    alignDropdown:SetDefaultText(initAlignMap[db[alignKey]])
     alignDropdown:SetupMenu(function(owner, rootDescription)
+        local map = (getViewer and IsViewerVertical(getViewer())) and ns.ALIGN_V_DISPLAY or ns.ALIGN_DISPLAY
         for _, a in ipairs({ "LEFT", "CENTER", "RIGHT" }) do
             rootDescription:CreateRadio(
-                ns.ALIGN_DISPLAY[a],
+                map[a],
                 function() return ns.db[alignKey] == a end,
                 function()
                     ns.db[alignKey] = a
@@ -1203,7 +1223,8 @@ local function CreateHotkeysPanelForViewer(frameName, titleText, prefix, alignKe
     end)
 
     UpdatePanel = function()
-        SetDropdownText(alignDropdown, ns.ALIGN_DISPLAY[ns.db[alignKey]])
+        local aMap = (getViewer and IsViewerVertical(getViewer())) and ns.ALIGN_V_DISPLAY or ns.ALIGN_DISPLAY
+        SetDropdownText(alignDropdown, aMap[ns.db[alignKey]])
 
         local showHotkeys = ns.db[prefix .. "show"]
         checkbox:SetChecked(showHotkeys)
@@ -1366,9 +1387,10 @@ local function ShowEssentialHotkeysPanel()
     if not essentialHotkeysPanel then
         essentialHotkeysPanel = CreateHotkeysPanelForViewer(
             "EnhancedCDMEssentialHotkeysPanel", "Enhanced CDM - Essential", "essential_hotkeys_",
-            "essential_align", ns.ApplyEssentialLayout)
+            "essential_align", ns.ApplyEssentialLayout, function() return ns.essentialViewer end)
     end
     essentialHotkeysPanel.UpdatePanel()
+    ns.RefreshEssentialPanel = essentialHotkeysPanel.UpdatePanel
     EmbedPanelInDialog(essentialHotkeysPanel)
 end
 
@@ -1382,9 +1404,10 @@ local function ShowUtilityHotkeysPanel()
     if not utilityHotkeysPanel then
         utilityHotkeysPanel = CreateHotkeysPanelForViewer(
             "EnhancedCDMUtilityHotkeysPanel", "Enhanced CDM - Utility", "utility_hotkeys_",
-            "utility_align", ns.ApplyUtilityLayout)
+            "utility_align", ns.ApplyUtilityLayout, function() return ns.utilityViewer end)
     end
     utilityHotkeysPanel.UpdatePanel()
+    ns.RefreshUtilityPanel = utilityHotkeysPanel.UpdatePanel
     EmbedPanelInDialog(utilityHotkeysPanel)
 end
 
@@ -1467,6 +1490,19 @@ local function SetupEditMode()
                             end
                         end
                         self.Settings:Layout()
+                    end
+
+                    -- Refresh our panel labels when Blizzard settings change (e.g. Orientation)
+                    if self.attachedToSystem == buffViewer then
+                        RefreshEditModePanel()
+                    elseif self.attachedToSystem == essViewer then
+                        if essentialHotkeysPanel and essentialHotkeysPanel.UpdatePanel then
+                            essentialHotkeysPanel.UpdatePanel()
+                        end
+                    elseif self.attachedToSystem == utilViewer then
+                        if utilityHotkeysPanel and utilityHotkeysPanel.UpdatePanel then
+                            utilityHotkeysPanel.UpdatePanel()
+                        end
                     end
                 end)
             end
