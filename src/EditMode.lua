@@ -1459,6 +1459,7 @@ local function SetupEditMode()
                     local utilViewer = _G["UtilityCooldownViewer"]
                     if self.attachedToSystem == buffViewer or self.attachedToSystem == buffBarViewer
                         or self.attachedToSystem == essViewer or self.attachedToSystem == utilViewer then
+                        -- Hide IconDirection — our alignment overrides Blizzard's direction
                         local children = { self.Settings:GetChildren() }
                         for _, child in ipairs(children) do
                             if child.setting == Enum.EditModeCooldownViewerSetting.IconDirection then

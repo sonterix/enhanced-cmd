@@ -115,4 +115,57 @@ describe("CalcGridPosition", function()
         expect(x).to_equal((fullRowWidth - W) / 2)
         expect(y).to_equal(0)
     end)
+
+    -- Vertical orientation tests
+    it("fills top-to-bottom in vertical mode", function()
+        local fullRowWidth = 3 * (W + S) - S
+        local x1, y1 = calc(1, 3, W, H, S, "LEFT", 5, fullRowWidth, true)
+        expect(x1).to_equal(0)
+        expect(y1).to_equal(0)
+
+        local x2, y2 = calc(2, 3, W, H, S, "LEFT", 5, fullRowWidth, true)
+        expect(x2).to_equal(0)
+        expect(y2).to_equal(H + S)
+
+        local x3, y3 = calc(3, 3, W, H, S, "LEFT", 5, fullRowWidth, true)
+        expect(x3).to_equal(0)
+        expect(y3).to_equal(2 * (H + S))
+    end)
+
+    it("wraps to next column in vertical mode", function()
+        local fullRowWidth = 3 * (W + S) - S
+        -- 4th icon with maxPerCol=3 → col 1, row 0
+        local x, y = calc(4, 3, W, H, S, "LEFT", 5, fullRowWidth, true)
+        expect(x).to_equal(W + S)
+        expect(y).to_equal(0)
+    end)
+
+    it("centers partial last column in vertical mode", function()
+        local maxPerCol = 3
+        local totalIcons = 5
+        local fullRowWidth = maxPerCol * (W + S) - S
+
+        -- Column 0: 3 icons (full) — no offset
+        local x1, y1 = calc(1, maxPerCol, W, H, S, "CENTER", totalIcons, fullRowWidth, true)
+        expect(y1).to_equal(0)
+
+        -- Column 1: 2 icons — centered vertically
+        local fullColHeight = maxPerCol * (H + S) - S
+        local lastColHeight = 2 * (H + S) - S
+        local x4, y4 = calc(4, maxPerCol, W, H, S, "CENTER", totalIcons, fullRowWidth, true)
+        expect(x4).to_equal(W + S)
+        expect(y4).to_equal((fullColHeight - lastColHeight) / 2)
+    end)
+
+    it("right-aligns partial last column in vertical mode", function()
+        local maxPerCol = 3
+        local totalIcons = 4
+        local fullRowWidth = maxPerCol * (W + S) - S
+
+        -- Column 1: 1 icon — pushed to bottom
+        local fullColHeight = maxPerCol * (H + S) - S
+        local x4, y4 = calc(4, maxPerCol, W, H, S, "RIGHT", totalIcons, fullRowWidth, true)
+        expect(x4).to_equal(W + S)
+        expect(y4).to_equal(fullColHeight - H)
+    end)
 end)

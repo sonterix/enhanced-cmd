@@ -429,8 +429,34 @@ end
 
 -- Calculates the x,y position for icon at 1-based index in a grid.
 -- Returns x, y (unscaled pixel offsets from the grid origin).
-local function CalcGridPosition(index, maxPerRow, iconW, iconH, spacing, align, totalIcons, fullRowWidth)
+local function CalcGridPosition(index, maxPerRow, iconW, iconH, spacing, align, totalIcons, fullRowWidth, isVertical)
     local idx = index - 1
+
+    if isVertical then
+        -- Vertical: fill top-to-bottom, wrap to next column
+        local maxPerCol = maxPerRow
+        local posInCol = idx % maxPerCol
+        local colNum = math.floor(idx / maxPerCol)
+
+        local fullColHeight = maxPerCol * (iconH + spacing) - spacing
+        local alignOffset = 0
+        if align ~= "LEFT" then
+            local colStart = colNum * maxPerCol
+            local iconsInCol = math.min(maxPerCol, totalIcons - colStart)
+            local colHeight = iconsInCol * (iconH + spacing) - spacing
+            if align == "CENTER" then
+                alignOffset = (fullColHeight - colHeight) / 2
+            elseif align == "RIGHT" then
+                alignOffset = fullColHeight - colHeight
+            end
+        end
+
+        local x = colNum * (iconW + spacing)
+        local y = alignOffset + posInCol * (iconH + spacing)
+        return x, y
+    end
+
+    -- Horizontal: fill left-to-right, wrap to next row
     local col = idx % maxPerRow
     local row = math.floor(idx / maxPerRow)
 
@@ -496,6 +522,7 @@ local function ApplyLayout()
     local maxPerRow = db.maxPerRow
     local growDown = (db.growDirection == "DOWN")
     local align = db.align
+    local isVertical = viewer.IsHorizontal and not viewer:IsHorizontal()
 
     local scale = visibleBuf[1]:GetScale()
     if scale < 0.01 then scale = 1 end
@@ -517,17 +544,23 @@ local function ApplyLayout()
     end
 
     local totalIcons = n
-    local numRows = math.ceil(totalIcons / maxPerRow)
-    -- Keep viewer at full maxPerRow width so the container stays fixed
-    -- regardless of how many icons are currently visible
-    local refCols = maxPerRow
-    local refRows = isDynamic and math.max(numRows, math.ceil(withCooldownID / maxPerRow)) or numRows
+    -- Compute grid dimensions — swap row/col semantics for vertical
+    local refCols, refRows
+    if isVertical then
+        local numCols = math.ceil(totalIcons / maxPerRow)
+        refCols = isDynamic and math.max(numCols, math.ceil(withCooldownID / maxPerRow)) or numCols
+        refRows = maxPerRow
+    else
+        local numRows = math.ceil(totalIcons / maxPerRow)
+        refCols = maxPerRow
+        refRows = isDynamic and math.max(numRows, math.ceil(withCooldownID / maxPerRow)) or numRows
+    end
     local fullRowWidth = refCols * (iconW + spacing) - spacing
 
     -- Position each icon in the grid
     for i = 1, n do
         local frame = visibleBuf[i]
-        local x, y = CalcGridPosition(i, maxPerRow, iconW, iconH, spacing, align, totalIcons, fullRowWidth)
+        local x, y = CalcGridPosition(i, maxPerRow, iconW, iconH, spacing, align, totalIcons, fullRowWidth, isVertical)
 
         -- Cache target position for the SetPoint hook to enforce
         frame._arTargetX = x
@@ -789,6 +822,8 @@ local function ApplyAlignLayout(v, alignKey, buf, hookChildFn)
         or totalChildren
     if maxPerRow < 1 then maxPerRow = totalChildren end
 
+    local isVertical = v.IsHorizontal and not v:IsHorizontal()
+
     local scale = buf[1]:GetScale()
     if scale < 0.01 then scale = 1 end
 
@@ -805,14 +840,22 @@ local function ApplyAlignLayout(v, alignKey, buf, hookChildFn)
     end
 
     local align = db[alignKey]
-    local numRows = math.ceil(n / maxPerRow)
-    local refCols = maxPerRow
+    local refCols, refRows
+    if isVertical then
+        local numCols = math.ceil(n / maxPerRow)
+        refCols = numCols
+        refRows = maxPerRow
+    else
+        local numRows = math.ceil(n / maxPerRow)
+        refCols = maxPerRow
+        refRows = numRows
+    end
     local fullRowWidth = refCols * (iconW + spacing) - spacing
 
     -- Position each icon using the shared grid calculator
     for i = 1, n do
         local frame = buf[i]
-        local x, y = CalcGridPosition(i, maxPerRow, iconW, iconH, spacing, align, n, fullRowWidth)
+        local x, y = CalcGridPosition(i, maxPerRow, iconW, iconH, spacing, align, n, fullRowWidth, isVertical)
 
         frame._arTargetX = x
         frame._arTargetY = y
@@ -823,8 +866,8 @@ local function ApplyAlignLayout(v, alignKey, buf, hookChildFn)
     end
 
     -- Size viewer to fit the full grid
-    local totalW = fullRowWidth * scale
-    local totalH = (numRows * (iconH + spacing) - spacing) * scale
+    local totalW = (refCols * (iconW + spacing) - spacing) * scale
+    local totalH = (refRows * (iconH + spacing) - spacing) * scale
     if totalW > 0 and totalH > 0 then
         v:SetSize(totalW, totalH)
     end
