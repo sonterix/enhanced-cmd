@@ -1,13 +1,25 @@
-# [0.13.5] - 2026-03-14
+# [0.14.0] - 2026-03-14
+
+## Added
+- Blizzard Orientation setting (Horizontal/Vertical) now works for Buffs, Essential, and Utility viewers
+  - Vertical orientation fills icons top-to-bottom, wrapping to new columns
+  - Alignment adjusts partial last column vertically (Top/Center/Bottom)
+  - Grid calculator supports both orientations with correct sizing
+- Orientation-aware Edit Mode panel labels
+  - Buffs: "# Rows" ↔ "# Columns", Growth "Down/Up" ↔ "Right/Left", Alignment "Left/Center/Right" ↔ "Top/Center/Bottom"
+  - Essential/Utility: Alignment labels swap to "Top/Center/Bottom" in vertical mode
+  - Labels update dynamically when Blizzard Orientation setting changes
+
+## Fixed
+- Gradient Colors context menu appearing on all cooldown items -- now restricted to bar entries only
+- Secret value taint errors (isActive, secureexecuterange) when adding alerts or exiting Edit Mode -- replaced EventRegistry callbacks with per-viewer RefreshLayout hooks to avoid tainting the callback table
+- ADDON_ACTION_BLOCKED taint from replacing MenuUtil.CreateContextMenu -- bar gradient context menu now uses hooksecurefunc post-hook with selective reopen instead of global function replacement
 
 ## Changed
 - Edit Mode settings panels reorganized into logical groups with left-aligned section headers
   - Buffs panel: "Grid" group (Layout, Per Row, Growth, Alignment) and "Stacks" group
   - Bars panel: "Grid" group (Orientation, Layout, Alignment, Per Row)
   - Essential/Utility panels: ungrouped (Alignment, Click Feedback), "Keybinds" group (Show, Shorten, Font Size, Position, offsets), "Stacks" group
-
-## Fixed
-- ADDON_ACTION_BLOCKED taint from replacing MenuUtil.CreateContextMenu -- bar gradient context menu now uses hooksecurefunc post-hook with selective reopen instead of global function replacement
 
 ------------------------------------
 
