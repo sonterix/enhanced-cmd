@@ -1,6 +1,7 @@
-# [0.14.0] - 2026-03-14
+## [0.14.0] - 2026-03-14
 
-## Added
+### Added
+
 - Blizzard Orientation setting (Horizontal/Vertical) now works for Buffs, Essential, and Utility viewers
   - Vertical orientation fills icons top-to-bottom, wrapping to new columns
   - Alignment adjusts partial last column vertically (Top/Center/Bottom)
@@ -10,22 +11,33 @@
   - Essential/Utility: Alignment labels swap to "Top/Center/Bottom" in vertical mode
   - Labels update dynamically when Blizzard Orientation setting changes
 
-## Fixed
+&nbsp;
+
+### Fixed
+
 - Gradient Colors context menu appearing on all cooldown items -- now restricted to bar entries only
 - Secret value taint errors (isActive, secureexecuterange) when adding alerts or exiting Edit Mode -- replaced EventRegistry callbacks with per-viewer RefreshLayout hooks to avoid tainting the callback table
 - ADDON_ACTION_BLOCKED taint from replacing MenuUtil.CreateContextMenu -- bar gradient context menu now uses hooksecurefunc post-hook with selective reopen instead of global function replacement
 
-## Changed
+&nbsp;
+
+### Changed
+
 - Edit Mode settings panels reorganized into logical groups with left-aligned section headers
   - Buffs panel: "Grid" group (Layout, Per Row, Growth, Alignment) and "Stacks" group
   - Bars panel: "Grid" group (Orientation, Layout, Alignment, Per Row)
   - Essential/Utility panels: ungrouped (Alignment, Click Feedback), "Keybinds" group (Show, Shorten, Font Size, Position, offsets), "Stacks" group
 
-------------------------------------
+&nbsp;
 
-# [0.13.0] - 2026-03-14
+---
 
-## Added
+&nbsp;
+
+## [0.13.0] - 2026-03-14
+
+### Added
+
 - Click feedback for Essential and Utility cooldown icons -- when a keybind is pressed, the corresponding CDM icon shows a yellow glow border matching Blizzard's action bar pushed effect (key-down to key-up timing)
   - Detection via SetButtonState hooks on action bar buttons -- event-driven, zero polling, combat-safe
   - Resolves spells through macros and spell overrides
@@ -33,11 +45,16 @@
   - "Click Feedback" checkbox in Edit Mode panels
 - /ecdm essential feedback on|off and /ecdm utility feedback on|off slash commands
 
-------------------------------------
+&nbsp;
 
-# [0.12.0] - 2026-03-06
+---
 
-## Added
+&nbsp;
+
+## [0.12.0] - 2026-03-06
+
+### Added
+
 - Icon alignment for Essential and Utility Cooldowns -- Left/Center/Right alignment setting matching the Buffs panel
   - Icons are positioned in a single row with alignment offset relative to the full viewer width
   - SetPoint hooks enforce alignment positions and survive Blizzard repositioning
@@ -45,29 +62,44 @@
 - /ecdm essential align <left|center|right> and /ecdm utility align slash commands
 - Blizzard's "Icon Position" setting is now hidden for Essential and Utility viewers (previously only hidden for Buffs and Bars)
 
-------------------------------------
+&nbsp;
 
-# [0.11.0] - 2026-03-05
+---
 
-## Changed
+&nbsp;
+
+## [0.11.0] - 2026-03-05
+
+### Changed
+
 - Edit Mode settings panels now embed into Blizzard's dialog -- panels appear as a left column alongside the native settings dialog with a shared border and vertical divider, instead of floating as separate windows
 - Panels automatically unembed and restore the dialog's original border when closed or when the dialog hides
 
-------------------------------------
+&nbsp;
 
-# [0.10.0] - 2026-03-05
+---
 
-## Added
+&nbsp;
+
+## [0.10.0] - 2026-03-05
+
+### Added
+
 - Stack/charge count text customization for Essential, Utility, and Buffs viewers
   - Adjustable font size, anchor position, and X/Y offsets for Blizzard's native ChargeCount text
   - Settings integrated into existing Edit Mode panels with visual divider
 - /ecdm essential stacks, /ecdm utility stacks, /ecdm buffs slash commands for stack text settings
 
-------------------------------------
+&nbsp;
 
-# [0.9.0] - 2026-03-05
+---
 
-## Added
+&nbsp;
+
+## [0.9.0] - 2026-03-05
+
+### Added
+
 - Per-bar gradient colors for Tracked Bars -- each bar can have its own start/end color gradient
   - Colors stored per cooldownID in SavedVariables, persist across sessions
   - Gradient applied via SetGradient("HORIZONTAL", startColor, endColor) on the StatusBar texture
@@ -82,30 +114,46 @@
   - /ecdm bars gradient <id> off -- remove gradient (revert to default orange)
   - /ecdm bars gradient clear -- remove all gradients
 
-------------------------------------
+&nbsp;
 
-# [0.8.0] - 2026-03-03
+---
 
-## Added
+&nbsp;
+
+## [0.8.0] - 2026-03-03
+
+### Added
+
 - Horizontal/Vertical offset sliders for Essential and Utility hotkey text positioning
   - Fine-tune keybind text placement with -40 to +40 pixel offsets per axis
   - Offsets reset to position defaults when Position is changed
   - Sliders conditional on "Show Keybinds" being enabled
 - /ecdm essential offsetx and /ecdm essential offsety slash commands (same for utility)
 
-## Changed
+&nbsp;
+
+### Changed
+
 - Edit Mode hotkey panels reordered: Show > Shorten > Font Size > Position > Horizontal > Vertical
 - Font size range expanded to 6-32 (was 8-20)
 - Offset range expanded to -40..40 (was -20..20)
 
-## Fixed
+&nbsp;
+
+### Fixed
+
 - Slider width jitter when value text changes -- value labels now use fixed width
 
-------------------------------------
+&nbsp;
 
-# [0.7.0] - 2026-03-03
+---
 
-## Added
+&nbsp;
+
+## [0.7.0] - 2026-03-03
+
+### Added
+
 - Shorten Keybinds Text toggle for Essential and Utility hotkey overlays (independently configurable)
   - When enabled (default), abbreviates key names compactly (e.g. SHIFT-PAGEUP > SPU)
   - When disabled, displays full unabbreviated key names
@@ -114,26 +162,42 @@
 - /ecdm essential shorten|noshorten and /ecdm utility shorten|noshorten slash commands
 - Tests for all new key abbreviations
 
-## Changed
+&nbsp;
+
+### Changed
+
 - Edit Mode hotkey panels use [checkbox] [label] layout for Show Keybinds row (Blizzard style)
 - Status output now includes text shortening state
 
-------------------------------------
+&nbsp;
 
-# [0.6.2] - 2026-03-03
+---
 
-## Fixed
+&nbsp;
+
+## [0.6.2] - 2026-03-03
+
+### Fixed
+
 - Keybinding overlays not appearing on Essential/Utility icons after adding, removing, or reordering cooldowns in Blizzard's CDM settings
 
-------------------------------------
+&nbsp;
 
-# [0.6.1] - 2026-03-02
+---
 
-## Fixed
+&nbsp;
+
+## [0.6.1] - 2026-03-02
+
+### Fixed
+
 - Crash in GetHotkeyText() when C_ActionBar API is unavailable during override spell resolution
 - Viewer recreation during polling window now correctly detected and re-hooked
 
-## Changed
+&nbsp;
+
+### Changed
+
 - Removed unnecessary RefreshAllHotkeys() from CDM settings change callback
 - Deduplicated RefreshAllHotkeys() calls when multiple hotkey viewers discovered simultaneously
 - Extracted shared HookViewerChild(), InstallViewerHooks(), SortByLayoutIndex() helpers in Core
@@ -141,11 +205,16 @@
 - SetupEditMode now follows local function + ns assignment convention
 - Removed unused err captures from pcall() calls
 
-------------------------------------
+&nbsp;
 
-# [0.6.0] - 2026-03-02
+---
 
-## Added
+&nbsp;
+
+## [0.6.0] - 2026-03-02
+
+### Added
+
 - Keybinding text overlay for Essential and Utility cooldown icons
   - Displays the configured hotkey from action bars on each cooldown icon
   - Only shows for abilities placed on action bars with a keybinding assigned
@@ -158,11 +227,16 @@
 - /ecdm essential and /ecdm utility slash command namespaces with show, hide, position, and fontsize subcommands
 - Auto-refresh on keybinding changes, action bar changes, and specialization changes
 
-------------------------------------
+&nbsp;
 
-# [0.5.0] - 2026-03-02
+---
 
-## Added
+&nbsp;
+
+## [0.5.0] - 2026-03-02
+
+### Added
+
 - Tracked Bars support -- configurable layout for the BuffBarCooldownViewer (Tracked Bars)
   - Orientation: Vertical (single column, default) or Horizontal (multi-row grid)
   - Layout mode: Static or Dynamic, same behavior as icon layout
@@ -174,84 +248,113 @@
 - CooldownViewerSettings.OnDataChanged now triggers relayout for both viewers
 - Blizzard's "Icon Direction" setting hidden for both Tracked Buffs and Tracked Bars
 
-## Changed
+&nbsp;
+
+### Changed
+
 - Mixin hooks (OnAcquireItemFrame, SetCooldownID, ClearCooldownID) now dispatch to the correct viewer
 - /ecdm status output now shows both icon and bar settings
 - TryInit() handles recreation of both viewers across loading screens
 
-------------------------------------
+&nbsp;
 
-# [0.4.0] - 2026-03-01
+---
 
-## Added
+&nbsp;
+
+## [0.4.0] - 2026-03-01
+
+### Added
+
 - Layout mode setting -- Static or Dynamic layout via dropdown, slash command, and Edit Mode panel
   - Static (default): Icons keep their pre-configured grid positions; inactive icons leave gaps
   - Dynamic: Active icons pack tightly with no gaps, re-aligned per alignment setting
 - /ecdm layout <static|dynamic> slash command
 - Layout dropdown in Edit Mode panel
 
-------------------------------------
+&nbsp;
 
-# [0.3.0] - 2026-02-28
+---
 
-## Fixed
+&nbsp;
+
+## [0.3.0] - 2026-02-28
+
+### Fixed
+
 - Icon spacing at non-100% Icon Size -- SetPoint offsets were double-scaled by child frame scale
 - Edit Mode selection border now correctly matches icon grid at all Icon Size values
 
-## Removed
+&nbsp;
+
+### Removed
+
 - Dead duplicate ShouldShowSetting patch in EditMode (Core.lua patch already covers it)
 - Unused _arOrigLayout reference (stored but never read)
 - Redundant ScheduleLayout orphan cleanup loop (already handled by TryInit wipe)
 - Redundant CooldownViewerSettings.NotifyListeners hook (EventRegistry callback covers it)
 
-------------------------------------
+&nbsp;
 
-# [0.2.2] - 2026-02-28
+---
 
-## Fixed
+&nbsp;
+
+## [0.2.2] - 2026-02-28
+
+### Fixed
+
 - Icon spacing now uses Blizzard's native iconPadding instead of hardcoded value -- respects CDM padding slider
 - Added Show/Hide hooks on icon frames for full Blizzard trigger coverage (catches SetIsActive > SetShown visibility changes from UNIT_AURA, SPELL_UPDATE_COOLDOWN, PLAYER_TOTEM_UPDATE events)
 - Replaced SetSize hook with Layout() override to neutralize Blizzard's GridLayoutFrame engine
 
-------------------------------------
+&nbsp;
 
-# [0.2.1] - 2026-02-27
+---
 
-## Added
+&nbsp;
+
+## [0.2.1] - 2026-02-27
+
+### Added
+
 - Align setting -- Left, Center, or Right alignment for incomplete last rows
 - /ecdm align <left|center|right> slash command
 - Align dropdown in Edit Mode panel
 
-## Changed
+&nbsp;
+
+### Changed
+
 - Slider value text now uses GameFontHighlightSmall (smaller, yellow/gold -- matches Tracked Buffs style)
 - Growth and Align dropdowns dynamically match slider width
 - "Growth Direction" label shortened to "Growth"
 - Panel height increased for proper bottom padding
 
-## Technical
-- DIRECTION_DISPLAY and ALIGN_DISPLAY tables moved before slash commands for correct upvalue capture
-- Alignment offset computed per-row in ApplyLayout(), baked into _arTargetX
-- Dropdown widths set dynamically in ShowEnhancedCDMPanel() based on actual panel width
+&nbsp;
 
-------------------------------------
+---
 
-# [0.2.0] - 2026-02-27
+&nbsp;
 
-## Changed
+## [0.2.0] - 2026-02-27
+
+### Changed
+
 - Edit Mode panel now only appears when "Tracked Buffs" frame is selected (was: appeared on any Edit Mode entry)
 - Edit Mode panel anchors below Blizzard's settings dialog instead of floating independently
 - Growth direction setting changed from toggle button to dropdown select
 
-## Technical
-- Replaced EnterEditMode/ExitEditMode hooks with SelectSystem/ClearSelectedSystem/ExitEditMode
-- Added ShowEnhancedCDMPanel() and HideEnhancedCDMPanel() helper functions
-- Panel no longer movable/draggable -- position is dynamic based on Blizzard dialog
+&nbsp;
 
-------------------------------------
+---
 
-# [0.1.0] - 2026-02-27
+&nbsp;
 
-## Added
+## [0.1.0] - 2026-02-27
+
+### Added
+
 - Multi-row grid layout for BuffIconCooldownViewer (Tracked Buffs)
 - Configurable icons per row (1-40) via /ecdm rows <n>
 - Growth direction (UP/DOWN) via /ecdm grow <direction>
