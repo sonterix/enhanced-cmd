@@ -17,7 +17,9 @@ local CONTENT_BOTTOM = 20
 local ROW_HEIGHT     = 34
 local DIVIDER_GAP    = 28
 
+-- Local alias — defined in Core.lua, available after Config→Core load order
 local function IsViewerVertical(v)
+    if ns.IsViewerVertical then return ns.IsViewerVertical(v) end
     return v and v.IsHorizontal and not v:IsHorizontal()
 end
 
@@ -116,7 +118,7 @@ local function CreateEditModePanel()
     perRowLabel:SetPoint("LEFT", 0, 0)
     perRowLabel:SetWidth(LABEL_WIDTH)
     perRowLabel:SetJustifyH("LEFT")
-    perRowLabel:SetText(IsViewerVertical(ns.viewer) and "# Columns" or "# Rows")
+    perRowLabel:SetText(IsViewerVertical(ns.viewer) and "# Rows" or "# Columns")
 
     local steppers = CreateFrame("Frame", "EnhancedCDMPerRowStepper", row2, "MinimalSliderWithSteppersTemplate")
     steppers:SetPoint("LEFT", perRowLabel, "RIGHT", 5, 0)
@@ -382,7 +384,7 @@ RefreshEditModePanel = function()
         steppers.Slider:SetValue(db.maxPerRow)
     end
     if editModePanel.perRowLabel then
-        editModePanel.perRowLabel:SetText(isVert and "# Columns" or "# Rows")
+        editModePanel.perRowLabel:SetText(isVert and "# Rows" or "# Columns")
     end
     local growMap = isVert and ns.DIRECTION_V_DISPLAY or ns.DIRECTION_DISPLAY
     SetDropdownText(editModePanel.growDropdown, growMap[db.growDirection])

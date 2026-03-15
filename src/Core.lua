@@ -1,6 +1,11 @@
 -- Enhanced CDM: Core — layout engine, hooks, init, slash commands, events
 local ADDON_NAME, ns = ...
 
+local function IsViewerVertical(v)
+    return v and v.IsHorizontal and not v:IsHorizontal()
+end
+ns.IsViewerVertical = IsViewerVertical
+
 local db
 local viewer
 local hookedFrames = {}
@@ -522,7 +527,7 @@ local function ApplyLayout()
     local maxPerRow = db.maxPerRow
     local growDown = (db.growDirection == "DOWN")
     local align = db.align
-    local isVertical = viewer.IsHorizontal and not viewer:IsHorizontal()
+    local isVertical = IsViewerVertical(viewer)
 
     local scale = visibleBuf[1]:GetScale()
     if scale < 0.01 then scale = 1 end
@@ -567,7 +572,13 @@ local function ApplyLayout()
         frame._arTargetY = y
         frame._arSettingPos = true
         frame:ClearAllPoints()
-        if growDown then
+        if isVertical then
+            if growDown then -- "Right" in vertical
+                frame:SetPoint("TOPLEFT", viewer, "TOPLEFT", x, -y)
+            else -- "Left" in vertical
+                frame:SetPoint("TOPRIGHT", viewer, "TOPRIGHT", -x, -y)
+            end
+        elseif growDown then
             frame:SetPoint("TOPLEFT", viewer, "TOPLEFT", x, -y)
         else
             frame:SetPoint("BOTTOMLEFT", viewer, "BOTTOMLEFT", x, y)
@@ -621,7 +632,13 @@ local function HookViewerChild(frame, hookedSet, getViewer, getGrowDown, schedul
 
         self._arSettingPos = true
         self:ClearAllPoints()
-        if getGrowDown() then
+        if IsViewerVertical(v) then
+            if getGrowDown() then -- "Right" in vertical
+                self:SetPoint("TOPLEFT", v, "TOPLEFT", self._arTargetX, -self._arTargetY)
+            else -- "Left" in vertical
+                self:SetPoint("TOPRIGHT", v, "TOPRIGHT", -self._arTargetX, -self._arTargetY)
+            end
+        elseif getGrowDown() then
             self:SetPoint("TOPLEFT", v, "TOPLEFT", self._arTargetX, -self._arTargetY)
         else
             self:SetPoint("BOTTOMLEFT", v, "BOTTOMLEFT", self._arTargetX, self._arTargetY)
@@ -822,7 +839,7 @@ local function ApplyAlignLayout(v, alignKey, buf, hookChildFn)
         or totalChildren
     if maxPerRow < 1 then maxPerRow = totalChildren end
 
-    local isVertical = v.IsHorizontal and not v:IsHorizontal()
+    local isVertical = IsViewerVertical(v)
 
     local scale = buf[1]:GetScale()
     if scale < 0.01 then scale = 1 end
