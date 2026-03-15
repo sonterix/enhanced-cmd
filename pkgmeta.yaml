@@ -1,6 +1,10 @@
 package-as: EnhancedCDM
+curse-id: 1479749
+
 manual-changelog: docs/CHANGELOG.md
+
 license-output: LICENSE
+
 ignore:
   - docs
   - tests

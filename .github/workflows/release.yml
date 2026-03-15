@@ -16,4 +16,3 @@ jobs:
       - uses: bigwigsmods/packager@v2
         env:
           CF_API_KEY: ${{ secrets.CF_API_KEY }}
-          CF_CURSE_ID: 1479749
