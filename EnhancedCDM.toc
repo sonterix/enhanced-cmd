@@ -4,6 +4,7 @@
 ## Author: Sonterix
 ## Version: 0.14.0
 ## SavedVariables: EnhancedCDMDB
+## X-Curse-Project-ID: 1479749
 
 src\Config.lua
 src\Core.lua
