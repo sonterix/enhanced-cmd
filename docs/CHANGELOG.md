@@ -1,3 +1,15 @@
+## [0.14.1] - 2026-03-27
+
+### Fixed
+
+- Stack count text not updating size or position after WoW 12.1 update -- Blizzard renamed `ChargeCount` to `Applications` Frame with nested `.Applications` FontString
+
+&nbsp;
+
+---
+
+&nbsp;
+
 ## [0.14.0] - 2026-03-14
 
 ### Added

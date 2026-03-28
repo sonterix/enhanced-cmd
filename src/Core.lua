@@ -380,15 +380,15 @@ local function InstallFeedbackHooks()
 end
 
 -- ---------------------------------------------------------------------------
--- Stack / charge count text — repositions Blizzard's ChargeCount FontString
+-- Stack / application count text — repositions the Applications FontString
 -- ---------------------------------------------------------------------------
 
 local function UpdateFrameStacks(frame)
     if not frame or not db then return end
-    local cc = frame.ChargeCount
-    if not cc then return end
-    local fs = cc.Current or cc
-    if not fs.SetFont then return end
+    local app = frame.Applications
+    if not app then return end
+    local fs = app.Applications
+    if not fs or not fs.SetFont then return end
     local prefix = GetStacksPrefix(frame)
     if not prefix then return end
 
@@ -401,8 +401,8 @@ local function UpdateFrameStacks(frame)
     local justify  = ns.HOTKEY_POSITION_JUSTIFY[position] or "RIGHT"
 
     fs:SetFont("Fonts\\ARIALN.TTF", fontSize, "OUTLINE")
-    cc:ClearAllPoints()
-    cc:SetPoint(anchor.point, frame, anchor.point, offsetX, offsetY)
+    fs:ClearAllPoints()
+    fs:SetPoint(anchor.point, frame, anchor.point, offsetX, offsetY)
     fs:SetJustifyH(justify)
 end
 
